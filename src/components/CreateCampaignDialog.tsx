@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarIcon, ImageIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, ImageIcon, Loader2, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useToast } from "@/hooks/useToast";
@@ -28,6 +30,9 @@ interface CampaignForm {
   target: string;
   ticketPrice: string;
   endDate: Date | undefined;
+  useDuration: boolean;
+  durationValue: string;
+  durationUnit: string;
   image: string;
 }
 
@@ -41,6 +46,9 @@ const initialForm: CampaignForm = {
   target: "",
   ticketPrice: "",
   endDate: undefined,
+  useDuration: false,
+  durationValue: "1",
+  durationUnit: "hours",
   image: "",
 };
 
@@ -50,8 +58,33 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
   const { toast } = useToast();
   const [form, setForm] = useState<CampaignForm>(initialForm);
 
-  const updateForm = (field: keyof CampaignForm, value: string | Date | undefined) => {
+  const updateForm = (field: keyof CampaignForm, value: string | Date | undefined | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Calculate duration in seconds
+  const getDurationInSeconds = (): number => {
+    const value = parseInt(form.durationValue);
+    
+    switch (form.durationUnit) {
+      case "minutes":
+        return value * 60;
+      case "hours":
+        return value * 60 * 60;
+      case "days":
+        return value * 24 * 60 * 60;
+      case "weeks":
+        return value * 7 * 24 * 60 * 60;
+      default:
+        return 60 * 60; // Default to 1 hour
+    }
+  };
+
+  // Calculate end date from duration
+  const getEndDateFromDuration = (): Date => {
+    const now = new Date();
+    const durationMs = getDurationInSeconds() * 1000;
+    return new Date(now.getTime() + durationMs);
   };
 
   const validateForm = (): string | null => {
@@ -60,8 +93,13 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
     if (!form.podcast.trim()) return "Podcast name is required";
     if (!form.target || parseInt(form.target) <= 0) return "Valid target amount is required";
     if (!form.ticketPrice || parseInt(form.ticketPrice) <= 0) return "Valid ticket price is required";
-    if (!form.endDate) return "End date is required";
-    if (form.endDate <= new Date()) return "End date must be in the future";
+    
+    if (form.useDuration) {
+      if (!form.durationValue || parseInt(form.durationValue) <= 0) return "Valid duration is required";
+    } else {
+      if (!form.endDate) return "End date is required";
+      if (form.endDate <= new Date()) return "End date must be in the future";
+    }
     
     return null;
   };
@@ -97,7 +135,8 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
       const ticketPriceMillisats = ticketPriceSats * 1000;
       
       // Convert end date to unix timestamp
-      const endTimestamp = Math.floor(form.endDate!.getTime() / 1000);
+      const endDate = form.useDuration ? getEndDateFromDuration() : form.endDate!;
+      const endTimestamp = Math.floor(endDate.getTime() / 1000);
 
       // Build tags
       const tags: string[][] = [
@@ -119,6 +158,12 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
       }
       if (form.image.trim()) {
         tags.push(["image", form.image.trim()]);
+      }
+      
+      // Add duration tag if using duration mode
+      if (form.useDuration) {
+        const durationInSeconds = getDurationInSeconds();
+        tags.push(["duration", durationInSeconds.toString()]);
       }
 
       publishEvent({
@@ -270,32 +315,82 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>End Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !form.endDate && "text-muted-foreground"
-                    )}
-                    disabled={isPending}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {form.endDate ? format(form.endDate, "PPP") : "Pick an end date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={form.endDate}
-                    onSelect={(date) => updateForm("endDate", date)}
-                    disabled={(date) => date <= new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="use-duration"
+                  checked={form.useDuration}
+                  onCheckedChange={(checked) => updateForm("useDuration", checked)}
+                  disabled={isPending}
+                />
+                <Label htmlFor="use-duration">Use duration instead of end date</Label>
+              </div>
+
+              {form.useDuration ? (
+                <div className="space-y-2">
+                  <Label>Campaign Duration *</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      type="number"
+                      placeholder="1"
+                      value={form.durationValue}
+                      onChange={(e) => updateForm("durationValue", e.target.value)}
+                      disabled={isPending}
+                      min="1"
+                      className="flex-1"
+                    />
+                    <Select
+                      value={form.durationUnit}
+                      onValueChange={(value) => updateForm("durationUnit", value)}
+                      disabled={isPending}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="minutes">Minutes</SelectItem>
+                        <SelectItem value="hours">Hours</SelectItem>
+                        <SelectItem value="days">Days</SelectItem>
+                        <SelectItem value="weeks">Weeks</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.durationValue && parseInt(form.durationValue) > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      <Clock className="inline h-3 w-3 mr-1" />
+                      Campaign will end: {format(getEndDateFromDuration(), "PPP 'at' p")}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>End Date *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !form.endDate && "text-muted-foreground"
+                        )}
+                        disabled={isPending}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {form.endDate ? format(form.endDate, "PPP") : "Pick an end date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={form.endDate}
+                        onSelect={(date) => updateForm("endDate", date)}
+                        disabled={(date) => date <= new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

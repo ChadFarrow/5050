@@ -23,6 +23,7 @@ A fundraiser campaign is an addressable event that defines a 50/50 raffle for a 
 - `image` - campaign image URL
 - `podcast_url` - podcast website or RSS feed URL
 - `episode` - specific episode this fundraiser is for
+- `duration` - campaign duration in seconds (alternative to calculating from creation time and end_date)
 
 **Content:** Additional campaign details in plaintext
 
