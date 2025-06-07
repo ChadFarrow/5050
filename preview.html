@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PodRaffle - 50/50 Fundraisers for Podcasters</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(214.3 31.8% 91.4%)",
+                        input: "hsl(214.3 31.8% 91.4%)",
+                        ring: "hsl(222.2 84% 4.9%)",
+                        background: "hsl(0 0% 100%)",
+                        foreground: "hsl(222.2 84% 4.9%)",
+                        primary: {
+                            DEFAULT: "hsl(222.2 47.4% 11.2%)",
+                            foreground: "hsl(210 40% 98%)",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(210 40% 96.1%)",
+                            foreground: "hsl(222.2 47.4% 11.2%)",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(210 40% 96.1%)",
+                            foreground: "hsl(215.4 16.3% 46.9%)",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(210 40% 96.1%)",
+                            foreground: "hsl(222.2 47.4% 11.2%)",
+                        },
+                        card: {
+                            DEFAULT: "hsl(0 0% 100%)",
+                            foreground: "hsl(222.2 84% 4.9%)",
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        .line-clamp-2 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-white to-blue-50">
+    <!-- Header -->
+    <header class="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-gradient-to-r from-purple-600 to-blue-600 p-2 rounded-lg">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                            PodRaffle
+                        </h1>
+                        <p class="text-sm text-muted-foreground">50/50 Fundraisers for Podcasters</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <button class="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
+                        View Demo
+                    </button>
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                        Connect Wallet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="py-16 px-4">
+        <div class="container mx-auto text-center max-w-4xl">
+            <h2 class="text-5xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-blue-600 to-teal-600 bg-clip-text text-transparent">
+                Support Your Favorite Podcasters
+            </h2>
+            <p class="text-xl text-muted-foreground mb-8 leading-relaxed">
+                Join 50/50 raffles to support podcast creators. Buy tickets for a chance to win half the pot 
+                while helping podcasters fund their shows. Built on Nostr with Lightning payments.
+            </p>
+            
+            <div class="grid md:grid-cols-3 gap-6 mb-12">
+                <!-- Feature Card 1 -->
+                <div class="bg-white rounded-lg border border-purple-200 p-6">
+                    <div class="text-center">
+                        <svg class="h-12 w-12 mx-auto text-purple-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <h3 class="text-lg font-semibold mb-2">Lightning Fast</h3>
+                        <p class="text-sm text-muted-foreground">
+                            Instant payments with Bitcoin Lightning Network
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Feature Card 2 -->
+                <div class="bg-white rounded-lg border border-blue-200 p-6">
+                    <div class="text-center">
+                        <svg class="h-12 w-12 mx-auto text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        <h3 class="text-lg font-semibold mb-2">Fair & Transparent</h3>
+                        <p class="text-sm text-muted-foreground">
+                            Verifiable random winner selection on Nostr
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Feature Card 3 -->
+                <div class="bg-white rounded-lg border border-teal-200 p-6">
+                    <div class="text-center">
+                        <svg class="h-12 w-12 mx-auto text-teal-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                        <h3 class="text-lg font-semibold mb-2">50/50 Split</h3>
+                        <p class="text-sm text-muted-foreground">
+                            Half to the winner, half to support the podcast
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all">
+                Create Fundraiser
+            </button>
+        </div>
+    </section>
+
+    <!-- Campaigns Section -->
+    <section class="py-12 px-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="text-center mb-8">
+                <h3 class="text-3xl font-bold mb-4">Active Campaigns</h3>
+                <p class="text-muted-foreground">Support your favorite podcasters and win big!</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Campaign Card 1 -->
+                <div class="bg-white rounded-lg border-2 hover:border-purple-200 hover:shadow-lg transition-all p-6">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <span class="text-purple-600 font-semibold">AJ</span>
+                        </div>
+                        <div>
+                            <p class="font-medium">Alice Johnson</p>
+                            <p class="text-sm text-muted-foreground">Tech Talk Weekly</p>
+                        </div>
+                        <span class="ml-auto bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+                    </div>
+                    
+                    <h4 class="text-lg font-semibold mb-2">Tech Talk Weekly Fundraiser</h4>
+                    <p class="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        Help us upgrade our recording equipment and keep bringing you the latest tech news!
+                    </p>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span>Progress</span>
+                            <span>350 / 500 sats</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full" style="width: 70%"></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-muted-foreground">Potential Win</p>
+                                <p class="font-semibold text-green-600">175 sats</p>
+                            </div>
+                            <div>
+                                <p class="text-muted-foreground">Tickets Sold</p>
+                                <p class="font-semibold">35</p>
+                            </div>
+                        </div>
+                        
+                        <button class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 rounded-md hover:from-purple-700 hover:to-blue-700 transition-all">
+                            Buy Tickets
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Campaign Card 2 -->
+                <div class="bg-white rounded-lg border-2 hover:border-purple-200 hover:shadow-lg transition-all p-6">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span class="text-blue-600 font-semibold">MC</span>
+                        </div>
+                        <div>
+                            <p class="font-medium">Mike Chen</p>
+                            <p class="text-sm text-muted-foreground">Underground Beats</p>
+                        </div>
+                        <span class="ml-auto bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+                    </div>
+                    
+                    <h4 class="text-lg font-semibold mb-2">Indie Music Spotlight</h4>
+                    <p class="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        Support independent artists and help us discover the next big thing in music!
+                    </p>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span>Progress</span>
+                            <span>750 / 1000 sats</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full" style="width: 75%"></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-muted-foreground">Potential Win</p>
+                                <p class="font-semibold text-green-600">375 sats</p>
+                            </div>
+                            <div>
+                                <p class="text-muted-foreground">Tickets Sold</p>
+                                <p class="font-semibold">30</p>
+                            </div>
+                        </div>
+                        
+                        <button class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 rounded-md hover:from-purple-700 hover:to-blue-700 transition-all">
+                            Buy Tickets
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Campaign Card 3 -->
+                <div class="bg-white rounded-lg border-2 hover:border-gray-200 hover:shadow-lg transition-all p-6 opacity-75">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                            <span class="text-gray-600 font-semibold">SW</span>
+                        </div>
+                        <div>
+                            <p class="font-medium">Sarah Williams</p>
+                            <p class="text-sm text-muted-foreground">Laugh Track</p>
+                        </div>
+                        <span class="ml-auto bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">Ended</span>
+                    </div>
+                    
+                    <h4 class="text-lg font-semibold mb-2">Comedy Hour Special</h4>
+                    <p class="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        Help us book better guests and maybe get some decent coffee for the studio!
+                    </p>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span>Final Amount</span>
+                            <span>300 / 300 sats</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 100%"></div>
+                        </div>
+                        
+                        <div class="bg-green-50 p-3 rounded-lg">
+                            <p class="text-sm font-medium text-green-800">
+                                🎉 Winner: Bob Smith won 150 sats!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t bg-white/80 backdrop-blur-sm mt-16">
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 rounded">
+                            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <span class="font-bold">PodRaffle</span>
+                    </div>
+                    <p class="text-sm text-muted-foreground">
+                        Decentralized 50/50 fundraisers for podcasters. Built on Nostr with Lightning payments.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-3">How It Works</h4>
+                    <ul class="space-y-2 text-sm text-muted-foreground">
+                        <li>• Podcasters create fundraiser campaigns</li>
+                        <li>• Listeners buy raffle tickets with Lightning</li>
+                        <li>• 50% goes to winner, 50% to creator</li>
+                        <li>• All transactions verified on Nostr</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-3">Technology</h4>
+                    <ul class="space-y-2 text-sm text-muted-foreground">
+                        <li>• Nostr Protocol</li>
+                        <li>• Lightning Network</li>
+                        <li>• React & TypeScript</li>
+                        <li>• Open Source</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t mt-8 pt-6 text-center text-sm text-muted-foreground">
+                <p>Built with ❤️ for the decentralized web. Support your favorite podcasters!</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Add some basic interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handlers for buttons
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    if (this.textContent.includes('Buy Tickets')) {
+                        alert('🎫 In the full app, this would open the ticket purchase dialog with Lightning payment integration!');
+                    } else if (this.textContent.includes('Create Fundraiser')) {
+                        alert('🎙️ In the full app, this would open the campaign creation form for podcasters!');
+                    } else if (this.textContent.includes('Connect Wallet')) {
+                        alert('⚡ In the full app, this would connect to your Nostr identity and Lightning wallet!');
+                    } else if (this.textContent.includes('View Demo')) {
+                        alert('🎮 In the full app, this would take you to an interactive demo with mock campaigns!');
+                    }
+                });
+            });
+
+            // Add hover effects to campaign cards
+            const cards = document.querySelectorAll('.bg-white');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
