@@ -38,7 +38,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   const currentPot = stats?.totalRaised || 0;
   const projectedPot = currentPot + totalCost;
   const projectedWinnings = Math.floor(projectedPot / 2);
-  const projectedWinningSats = Math.floor(projectedWinnings / 1000);
+  const _projectedWinningSats = Math.floor(projectedWinnings / 1000);
 
   const currentTickets = stats?.totalTickets || 0;
   const projectedTotalTickets = currentTickets + tickets;
@@ -66,7 +66,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
     try {
       setIsProcessingPayment(true);
 
-      // In a real implementation, this would:
+      // TODO: In a real implementation, this would:
       // 1. Generate a Lightning invoice for the total cost
       // 2. Present it to the user for payment
       // 3. Wait for payment confirmation

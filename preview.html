@@ -3,43 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PodRaffle - Decentralized 50/50 fundraisers for podcasters on Nostr">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="PodRaffle - 50/50 Fundraisers for Podcasters">
+    <meta property="og:description" content="Decentralized 50/50 fundraisers for podcasters on Nostr">
+    <link rel="manifest" href="/manifest.json">
     <title>PodRaffle - 50/50 Fundraisers for Podcasters</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        border: "hsl(214.3 31.8% 91.4%)",
-                        input: "hsl(214.3 31.8% 91.4%)",
-                        ring: "hsl(222.2 84% 4.9%)",
-                        background: "hsl(0 0% 100%)",
-                        foreground: "hsl(222.2 84% 4.9%)",
-                        primary: {
-                            DEFAULT: "hsl(222.2 47.4% 11.2%)",
-                            foreground: "hsl(210 40% 98%)",
-                        },
-                        secondary: {
-                            DEFAULT: "hsl(210 40% 96.1%)",
-                            foreground: "hsl(222.2 47.4% 11.2%)",
-                        },
-                        muted: {
-                            DEFAULT: "hsl(210 40% 96.1%)",
-                            foreground: "hsl(215.4 16.3% 46.9%)",
-                        },
-                        accent: {
-                            DEFAULT: "hsl(210 40% 96.1%)",
-                            foreground: "hsl(222.2 47.4% 11.2%)",
-                        },
-                        card: {
-                            DEFAULT: "hsl(0 0% 100%)",
-                            foreground: "hsl(222.2 84% 4.9%)",
-                        },
-                    },
-                }
-            }
-        }
-    </script>
+    <script src="/tailwind-config.js"></script>
     <style>
         .line-clamp-2 {
             overflow: hidden;
@@ -318,36 +289,6 @@
         </div>
     </footer>
 
-    <script>
-        // Add some basic interactivity
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add click handlers for buttons
-            const buttons = document.querySelectorAll('button');
-            buttons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    if (this.textContent.includes('Buy Tickets')) {
-                        alert('🎫 In the full app, this would open the ticket purchase dialog with Lightning payment integration!');
-                    } else if (this.textContent.includes('Create Fundraiser')) {
-                        alert('🎙️ In the full app, this would open the campaign creation form for podcasters!');
-                    } else if (this.textContent.includes('Connect Wallet')) {
-                        alert('⚡ In the full app, this would connect to your Nostr identity and Lightning wallet!');
-                    } else if (this.textContent.includes('View Demo')) {
-                        alert('🎮 In the full app, this would take you to an interactive demo with mock campaigns!');
-                    }
-                });
-            });
-
-            // Add hover effects to campaign cards
-            const cards = document.querySelectorAll('.bg-white');
-            cards.forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-2px)';
-                });
-                card.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0)';
-                });
-            });
-        });
-    </script>
+    <script src="/preview-interactions.js"></script>
 </body>
 </html>

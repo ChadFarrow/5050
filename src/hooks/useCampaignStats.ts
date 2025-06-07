@@ -130,7 +130,7 @@ export function useUserTickets(campaignPubkey: string, campaignDTag: string, use
       const validEvents = events.filter(validateTicketPurchase);
       const purchases = validEvents.map(eventToTicketPurchase);
 
-      return purchases.sort((a, b) => a.createdAt - a.createdAt);
+      return purchases.sort((a, _b) => a.createdAt - a.createdAt);
     },
     enabled: !!campaignPubkey && !!campaignDTag && !!userPubkey,
     staleTime: 15000,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Play, Pause, Volume2, Trophy, Zap, Users } from "lucide-react";
+import { ArrowLeft, Trophy, Zap, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,27 +76,28 @@ export default function Demo() {
       {/* Header */}
       <header className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" asChild>
+          <div className="flex items-center justify-between gap-4">
+            <Button variant="ghost" asChild size="sm">
               <Link to="/">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to App
+                <span className="hidden sm:inline">Back to App</span>
+                <span className="sm:hidden">Back</span>
               </Link>
             </Button>
             
-            <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-2 rounded-lg">
-                <Trophy className="h-6 w-6 text-white" />
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+                <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent truncate">
                   PodRaffle Demo
                 </h1>
-                <p className="text-xs text-muted-foreground">Interactive Preview</p>
+                <p className="text-xs text-muted-foreground hidden sm:block">Interactive Preview</p>
               </div>
             </div>
             
-            <div className="w-24" /> {/* Spacer for centering */}
+            <div className="w-6 sm:w-24" /> {/* Spacer for centering */}
           </div>
         </div>
       </header>
@@ -104,21 +105,21 @@ export default function Demo() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Demo Introduction */}
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent leading-tight">
               See PodRaffle in Action
             </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto px-4">
               Explore how podcasters and listeners interact with 50/50 fundraisers. 
               Click on different campaigns to see how the platform works.
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Campaign List */}
             <div className="lg:col-span-2">
-              <h3 className="text-2xl font-bold mb-6">Active & Completed Campaigns</h3>
-              <div className="space-y-6">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Active & Completed Campaigns</h3>
+              <div className="space-y-4 sm:space-y-6">
                 {mockCampaigns.map((campaign) => (
                   <Card 
                     key={campaign.id}
@@ -130,18 +131,18 @@ export default function Demo() {
                     onClick={() => setSelectedCampaign(campaign)}
                   >
                     <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-10 w-10">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+                          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
                             <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${campaign.creator}`} />
                             <AvatarFallback>{campaign.creator[0]}</AvatarFallback>
                           </Avatar>
-                          <div>
-                            <CardTitle className="text-lg">{campaign.title}</CardTitle>
-                            <CardDescription>{campaign.podcast} • by {campaign.creator}</CardDescription>
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-base sm:text-lg leading-tight">{campaign.title}</CardTitle>
+                            <CardDescription className="text-sm truncate">{campaign.podcast} • by {campaign.creator}</CardDescription>
                           </div>
                         </div>
-                        <Badge variant={campaign.isActive ? "default" : "secondary"}>
+                        <Badge variant={campaign.isActive ? "default" : "secondary"} className="flex-shrink-0">
                           {campaign.isActive ? "Active" : "Ended"}
                         </Badge>
                       </div>
@@ -167,18 +168,18 @@ export default function Demo() {
                         </div>
                         <Progress value={getProgressPercent(campaign.currentAmount, campaign.target)} />
                         
-                        <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm">
                           <div>
-                            <p className="text-muted-foreground">Tickets</p>
+                            <p className="text-muted-foreground text-xs sm:text-sm">Tickets</p>
                             <p className="font-semibold">{campaign.ticketsSold}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Participants</p>
+                            <p className="text-muted-foreground text-xs sm:text-sm">Participants</p>
                             <p className="font-semibold">{campaign.participants}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Time Left</p>
-                            <p className="font-semibold">{campaign.timeLeft}</p>
+                            <p className="text-muted-foreground text-xs sm:text-sm">Time Left</p>
+                            <p className="font-semibold text-xs sm:text-sm">{campaign.timeLeft}</p>
                           </div>
                         </div>
                         
@@ -197,8 +198,8 @@ export default function Demo() {
             </div>
 
             {/* Selected Campaign Details */}
-            <div className="space-y-6">
-              <Card className="sticky top-8">
+            <div className="space-y-4 sm:space-y-6">
+              <Card className="lg:sticky lg:top-8">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Trophy className="h-5 w-5 mr-2" />
@@ -299,19 +300,19 @@ export default function Demo() {
           </div>
 
           {/* Call to Action */}
-          <div className="text-center mt-16 p-8 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900 rounded-2xl">
-            <h3 className="text-2xl font-bold mb-4">Ready to Get Started?</h3>
-            <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+          <div className="text-center mt-8 sm:mt-16 p-6 sm:p-8 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900 rounded-2xl">
+            <h3 className="text-xl sm:text-2xl font-bold mb-4">Ready to Get Started?</h3>
+            <p className="text-sm sm:text-base text-muted-foreground mb-6 max-w-2xl mx-auto">
               Join the decentralized future of podcast fundraising. Create campaigns, buy tickets, 
               and support your favorite creators while having a chance to win big!
             </p>
-            <div className="flex justify-center space-x-4">
-              <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-blue-600">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+              <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-blue-600 w-full sm:w-auto">
                 <Link to="/">
                   Launch PodRaffle
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" asChild>
+              <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
                 <a href="https://github.com/your-repo" target="_blank" rel="noopener noreferrer">
                   View on GitHub
                 </a>

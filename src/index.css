@@ -95,8 +95,20 @@
     @apply border-border;
   }
 
+  html {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    min-width: 320px;
+  }
+
+  /* Prevent horizontal scrolling on mobile */
+  .container {
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
 

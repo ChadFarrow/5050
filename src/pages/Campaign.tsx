@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { ArrowLeft, Trophy, Users, Clock, Target, Ticket, ExternalLink } from "lucide-react";
+import { ArrowLeft, Trophy, Users, Ticket, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCampaign } from "@/hooks/useCampaigns";
-import { useCampaignStats, useUserTickets } from "@/hooks/useCampaignStats";
+import { useCampaignStats, useUserTickets, type TicketPurchase } from "@/hooks/useCampaignStats";
 import { useAuthor } from "@/hooks/useAuthor";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
 import { genUserName } from "@/lib/genUserName";
@@ -23,7 +23,7 @@ export default function Campaign() {
   const [showBuyDialog, setShowBuyDialog] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading } = useCampaign(pubkey || "", dTag || "");
-  const { data: stats, isLoading: statsLoading } = useCampaignStats(pubkey || "", dTag || "");
+  const { data: stats } = useCampaignStats(pubkey || "", dTag || "");
   const { data: userTickets } = useUserTickets(pubkey || "", dTag || "", user?.pubkey);
   const author = useAuthor(campaign?.pubkey || "");
 
@@ -74,28 +74,29 @@ export default function Campaign() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <Button variant="ghost" asChild className="mb-4">
+          <div className="mb-6 sm:mb-8">
+            <Button variant="ghost" asChild className="mb-4" size="sm">
               <Link to="/">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Campaigns
+                <span className="hidden sm:inline">Back to Campaigns</span>
+                <span className="sm:hidden">Back</span>
               </Link>
             </Button>
 
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-4">
-                <Avatar className="h-16 w-16">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="flex items-start space-x-3 sm:space-x-4 min-w-0">
+                <Avatar className="h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0">
                   <AvatarImage src={profileImage} alt={displayName} />
-                  <AvatarFallback className="text-lg">{displayName[0]?.toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="text-sm sm:text-lg">{displayName[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <h1 className="text-3xl font-bold mb-2">{campaign.title}</h1>
-                  <p className="text-lg text-muted-foreground">{campaign.podcast}</p>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 leading-tight">{campaign.title}</h1>
+                  <p className="text-base sm:text-lg text-muted-foreground truncate">{campaign.podcast}</p>
                   <p className="text-sm text-muted-foreground">by {displayName}</p>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-shrink-0">
                 {campaign.isActive ? (
                   <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                     Active
@@ -107,9 +108,9 @@ export default function Campaign() {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
               {/* Campaign Image */}
               {campaign.image && (
                 <div className="aspect-video rounded-lg overflow-hidden bg-muted">
@@ -146,14 +147,14 @@ export default function Campaign() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Tickets Owned</p>
-                        <p className="text-2xl font-bold">{userTicketCount}</p>
+                        <p className="text-xl sm:text-2xl font-bold">{userTicketCount}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Win Chance</p>
-                        <p className="text-2xl font-bold text-green-600">{userWinChance.toFixed(1)}%</p>
+                        <p className="text-xl sm:text-2xl font-bold text-green-600">{userWinChance.toFixed(1)}%</p>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -167,10 +168,28 @@ export default function Campaign() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* All Participants */}
+              {stats && stats.purchases.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Users className="h-5 w-5 mr-2" />
+                      All Participants ({stats.uniqueParticipants})
+                    </CardTitle>
+                    <CardDescription>
+                      Everyone who bought tickets for this campaign
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ParticipantsList purchases={stats.purchases} />
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Campaign Stats */}
               <Card>
                 <CardHeader>
@@ -290,6 +309,94 @@ export default function Campaign() {
         open={showBuyDialog}
         onOpenChange={setShowBuyDialog}
       />
+    </div>
+  );
+}
+
+function ParticipantsList({ purchases }: { purchases: TicketPurchase[] }) {
+  // Group purchases by participant
+  const participantMap = new Map<string, { 
+    pubkey: string; 
+    totalTickets: number; 
+    totalAmount: number; 
+    purchases: TicketPurchase[];
+    latestPurchase: number;
+  }>();
+
+  purchases.forEach(purchase => {
+    const existing = participantMap.get(purchase.pubkey);
+    if (existing) {
+      existing.totalTickets += purchase.tickets;
+      existing.totalAmount += purchase.amount;
+      existing.purchases.push(purchase);
+      existing.latestPurchase = Math.max(existing.latestPurchase, purchase.createdAt);
+    } else {
+      participantMap.set(purchase.pubkey, {
+        pubkey: purchase.pubkey,
+        totalTickets: purchase.tickets,
+        totalAmount: purchase.amount,
+        purchases: [purchase],
+        latestPurchase: purchase.createdAt,
+      });
+    }
+  });
+
+  // Convert to array and sort by total tickets (descending)
+  const participants = Array.from(participantMap.values()).sort((a, b) => b.totalTickets - a.totalTickets);
+
+  return (
+    <div className="space-y-3">
+      {participants.map((participant, index) => (
+        <ParticipantRow 
+          key={participant.pubkey} 
+          participant={participant} 
+          rank={index + 1}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ParticipantRow({ 
+  participant, 
+  rank 
+}: { 
+  participant: { 
+    pubkey: string; 
+    totalTickets: number; 
+    totalAmount: number; 
+    purchases: TicketPurchase[];
+    latestPurchase: number;
+  }; 
+  rank: number;
+}) {
+  const author = useAuthor(participant.pubkey);
+  const metadata = author.data?.metadata;
+  const displayName = metadata?.name ?? genUserName(participant.pubkey);
+  const profileImage = metadata?.picture;
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg gap-3">
+      <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+        <div className="flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 bg-primary/10 text-primary rounded-full text-xs sm:text-sm font-semibold flex-shrink-0">
+          {rank}
+        </div>
+        <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+          <AvatarImage src={profileImage} alt={displayName} />
+          <AvatarFallback className="text-xs sm:text-sm">{displayName[0]?.toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-sm truncate">{displayName}</p>
+          <p className="text-xs text-muted-foreground">
+            {participant.purchases.length} purchase{participant.purchases.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+      
+      <div className="text-right flex-shrink-0">
+        <p className="font-semibold text-sm">{participant.totalTickets} tickets</p>
+        <p className="text-xs text-muted-foreground">{formatSats(participant.totalAmount)}</p>
+      </div>
     </div>
   );
 }
