@@ -164,6 +164,26 @@ export function useNWCReal() {
             }
             throw new Error(`WebLN error: ${weblnError instanceof Error ? weblnError.message : 'Unknown WebLN error'}`);
           }
+        } else if (method === 'get_balance') {
+          console.log('💡 Using WebLN getBalance for NWC request');
+          
+          try {
+            if (!webln.enabled) {
+              await webln.enable();
+            }
+            
+            const balance = await webln.getBalance();
+            
+            return {
+              result_type: 'get_balance',
+              result: {
+                balance: balance.balance
+              }
+            };
+          } catch (weblnError) {
+            console.error('❌ WebLN getBalance error:', weblnError);
+            throw new Error(`WebLN getBalance error: ${weblnError instanceof Error ? weblnError.message : 'Unknown WebLN error'}`);
+          }
         }
       } else {
         console.log('⚠️ WebLN not available in this browser');
@@ -173,7 +193,7 @@ export function useNWCReal() {
       console.log('⚠️ Using NWC client as fallback');
       
       // Only support core methods that are widely implemented
-      const supportedMethods = ['make_invoice', 'pay_invoice'];
+      const supportedMethods = ['make_invoice', 'pay_invoice', 'get_balance'];
       
       if (!supportedMethods.includes(method)) {
         throw new Error(`Unsupported NWC method: ${method}. Supported methods: ${supportedMethods.join(', ')}`);
@@ -198,6 +218,14 @@ export function useNWCReal() {
             result_type: 'pay_invoice',
             result: {
               preimage: payment.preimage
+            }
+          };
+        case 'get_balance':
+          const balance = await nwcClient.getBalance();
+          return {
+            result_type: 'get_balance',
+            result: {
+              balance // balance in msats
             }
           };
         default:

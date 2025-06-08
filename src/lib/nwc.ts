@@ -90,7 +90,7 @@ type NWCRequest = {
   params: Record<string, unknown>;
 };
 
-type NWCMethod = 'get_info' | 'pay_invoice' | 'make_invoice' | 'lookup_invoice' | 'list_transactions' | 'get_balance';
+export type NWCMethod = 'get_info' | 'pay_invoice' | 'make_invoice' | 'lookup_invoice' | 'list_transactions' | 'get_balance';
 
 interface NWCError {
   code: 'RATE_LIMITED' | 'NOT_IMPLEMENTED' | 'INSUFFICIENT_BALANCE' | 'QUOTA_EXCEEDED' | 'RESTRICTED' | 'UNAUTHORIZED' | 'INTERNAL' | 'OTHER';
@@ -134,6 +134,13 @@ interface LightningInvoice {
   description: string;
   expires_at: number;
   checking_id: string;
+}
+
+export interface NWCGetBalanceResponse extends NWCResponse {
+  result_type: 'get_balance';
+  result: {
+    balance: number;
+  };
 }
 
 export class NWCClient {
@@ -445,6 +452,19 @@ export class NWCClient {
       console.error('❌ Failed to pay invoice:', error);
       throw error;
     }
+  }
+
+  async getBalance(): Promise<number> {
+    const response = await this.sendRequest({
+      method: 'get_balance',
+      params: {}
+    }) as NWCGetBalanceResponse;
+
+    if (response.result_type !== 'get_balance') {
+      throw new Error('Invalid response type for get_balance');
+    }
+
+    return response.result.balance;
   }
 }
 
