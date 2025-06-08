@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarIcon, ImageIcon, Loader2, Clock } from "lucide-react";
+import { CalendarIcon, ImageIcon, Loader2, Clock, Zap, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
+import { isValidNWCConnection } from "@/lib/nwc-mcp-client";
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -34,6 +35,7 @@ interface FundraiserForm {
   durationValue: string;
   durationUnit: string;
   image: string;
+  nwcConnection: string;
 }
 
 const initialForm: FundraiserForm = {
@@ -50,6 +52,7 @@ const initialForm: FundraiserForm = {
   durationValue: "1",
   durationUnit: "hours",
   image: "",
+  nwcConnection: "",
 };
 
 export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
@@ -57,6 +60,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const { toast } = useToast();
   const [form, setForm] = useState<FundraiserForm>(initialForm);
+  const [showNWCConnection, setShowNWCConnection] = useState(false);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -99,6 +103,11 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
     } else {
       if (!form.endDate) return "End date is required";
       if (form.endDate <= new Date()) return "End date must be in the future";
+    }
+
+    // Validate NWC connection if provided
+    if (form.nwcConnection.trim() && !isValidNWCConnection(form.nwcConnection.trim())) {
+      return "Invalid NWC (Nostr Wallet Connect) connection string";
     }
     
     return null;
@@ -164,6 +173,31 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
       if (form.useDuration) {
         const durationInSeconds = getDurationInSeconds();
         tags.push(["duration", durationInSeconds.toString()]);
+      }
+
+      // Encrypt and store NWC connection if provided
+      if (form.nwcConnection.trim()) {
+        if (!user.signer.nip44) {
+          toast({
+            title: "Encryption Not Supported",
+            description: "Your Nostr client doesn't support NIP-44 encryption needed for NWC storage.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        try {
+          const encryptedNWC = await user.signer.nip44.encrypt(user.pubkey, form.nwcConnection.trim());
+          tags.push(["nwc", encryptedNWC]);
+        } catch (error) {
+          console.error("Failed to encrypt NWC connection:", error);
+          toast({
+            title: "Encryption Failed",
+            description: "Failed to encrypt NWC connection. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       publishEvent({
@@ -406,6 +440,68 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
                 <Button variant="outline" size="icon" disabled={isPending}>
                   <ImageIcon className="h-4 w-4" />
                 </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Lightning Wallet Setup */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Zap className="h-5 w-5 text-yellow-500" />
+              <h3 className="text-lg font-semibold">Lightning Wallet Setup</h3>
+            </div>
+            
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-3">
+              <div className="flex items-start space-x-2">
+                <Zap className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                    Enable Lightning Payments (Recommended)
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-300">
+                    Connect your Lightning wallet via NWC (Nostr Wallet Connect) to automatically receive payments 
+                    from ticket sales. Without this, supporters cannot buy tickets with Lightning.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nwc-connection">NWC Connection String (optional)</Label>
+              <div className="space-y-2">
+                <div className="flex space-x-2">
+                  <Input
+                    id="nwc-connection"
+                    type={showNWCConnection ? "text" : "password"}
+                    placeholder="nostr+walletconnect://..."
+                    value={form.nwcConnection}
+                    onChange={(e) => updateForm("nwcConnection", e.target.value)}
+                    disabled={isPending}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowNWCConnection(!showNWCConnection)}
+                    disabled={isPending}
+                  >
+                    {showNWCConnection ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>• Get this from your Lightning wallet's NWC settings (Alby, Zeus, etc.)</p>
+                  <p>• This connection will be encrypted and stored securely</p>
+                  <p>• Required for automatic Lightning invoice generation</p>
+                </div>
+                {form.nwcConnection.trim() && (
+                  <div className="text-xs">
+                    {isValidNWCConnection(form.nwcConnection.trim()) ? (
+                      <span className="text-green-600 dark:text-green-400">✓ Valid NWC connection</span>
+                    ) : (
+                      <span className="text-red-600 dark:text-red-400">✗ Invalid NWC connection format</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

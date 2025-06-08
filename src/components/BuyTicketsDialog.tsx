@@ -14,12 +14,7 @@ import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { useToast } from "@/hooks/useToast";
 import { formatSats } from "@/lib/utils";
-import { lightningService, type LightningInvoice, type LightningPayment, type NWCConfig } from "@/lib/lightning";
-import { useNWC } from "@/hooks/useNWC";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { LightningConfig } from "@/components/LightningConfig";
-import { LightningInvoiceComponent } from "@/components/LightningInvoice";
-import type { Fundraiser } from "@/hooks/useCampaigns";
+import type { Campaign } from "@/hooks/useCampaigns";
 
 interface BuyTicketsDialogProps {
   campaign: Fundraiser;
@@ -76,55 +71,25 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       return;
     }
 
-    if (!isLightningConfigured) {
-      toast({
-        title: "Lightning Not Configured",
-        description: "Please configure your Lightning service first",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      setIsCreatingInvoice(true);
+      setIsProcessingPayment(true);
 
-      const description = `${tickets} ticket${tickets > 1 ? 's' : ''} for ${campaign.title}`;
-      
-      let invoice: LightningInvoice;
-      
-      if (isNWCConfigured) {
-        // Use NWC to create invoice
-        invoice = await createNWCInvoice({
-          amount: totalCost,
-          description,
-          expiry: 3600, // 1 hour
-        });
-      } else {
-        // Use traditional lightning service
-        invoice = await lightningService.createInvoice(totalCost, description);
-      }
-      
-      setCurrentInvoice(invoice);
-      setCurrentStep('invoice');
+      // TODO: In a real implementation, this would:
+      // 1. Generate a Lightning invoice for the total cost
+      // 2. Present it to the user for payment
+      // 3. Wait for payment confirmation
+      // 4. Create the ticket purchase event with payment proof
 
-      toast({
-        title: "Invoice Created",
-        description: isNWCConfigured ? "NWC invoice generated successfully" : "Lightning invoice generated successfully",
-      });
-    } catch (error) {
-      console.error("Error creating invoice:", error);
-      toast({
-        title: "Invoice Creation Failed",
-        description: error instanceof Error ? error.message : "Failed to create Lightning invoice",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingInvoice(false);
-    }
-  };
+      // For this demo, we'll simulate the process
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-  const handlePaymentConfirmed = async (payment: LightningPayment) => {
-    try {
+      // Generate mock payment data
+      const paymentHash = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      const bolt11 = `lnbc${totalCostSats}u1p...mock_invoice_${Date.now()}`;
+      
       // Generate unique purchase ID
       const purchaseId = `purchase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
@@ -134,17 +99,12 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       // Build tags for ticket purchase event
       const tags: string[][] = [
         ["d", purchaseId],
-        ["a", fundraiserCoordinate],
+        ["a", campaignCoordinate],
         ["amount", totalCost.toString()],
         ["tickets", tickets.toString()],
-        ["bolt11", payment.bolt11],
-        ["payment_hash", payment.payment_hash],
+        ["bolt11", bolt11],
+        ["payment_hash", paymentHash],
       ];
-
-      // Add preimage if available (proof of payment)
-      if (payment.preimage) {
-        tags.push(["preimage", payment.preimage]);
-      }
 
       publishEvent({
         kind: 31951,
@@ -152,22 +112,20 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         tags,
       });
 
-      setCurrentStep('success');
+          toast({
+            title: "Tickets Purchased!",
+            description: `Successfully bought ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`,
+          });
 
-      toast({
-        title: "Tickets Purchased!",
-        description: `Successfully bought ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`,
-      });
-
-      // Auto-close after success
-      setTimeout(() => {
-        handleClose();
-      }, 3000);
+      // Reset form and close dialog
+      setTicketCount("1");
+      setMessage("");
+      onOpenChange(false);
     } catch (error) {
       console.error("Error creating ticket purchase event:", error);
       toast({
-        title: "Event Creation Failed",
-        description: "Payment confirmed but failed to create ticket event. Please contact support.",
+        title: "Purchase Failed",
+        description: "Failed to purchase tickets. Please try again.",
         variant: "destructive",
       });
     }

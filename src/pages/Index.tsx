@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Plus, Trophy, Zap, Users, DollarSign } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,12 +40,6 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-              <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
-                <Link to="/demo">View Demo</Link>
-              </Button>
-              <Button variant="outline" size="sm" className="sm:hidden" asChild>
-                <Link to="/demo">Demo</Link>
-              </Button>
               <div className="hidden sm:block">
                 <RelaySelector />
               </div>

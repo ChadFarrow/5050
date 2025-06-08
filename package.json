@@ -10,7 +10,10 @@
     "deploy": "npm run build && npx -y surge@latest dist"
   },
   "dependencies": {
+    "@getalby/lightning-tools": "^5.2.0",
+    "@getalby/sdk": "^5.1.0",
     "@hookform/resolvers": "^3.9.0",
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@nostrify/nostrify": "npm:@jsr/nostrify__nostrify@^0.46.1",
     "@nostrify/react": "npm:@jsr/nostrify__react@^0.2.5",
     "@radix-ui/react-accordion": "^1.2.0",
