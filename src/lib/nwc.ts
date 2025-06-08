@@ -110,10 +110,37 @@ export interface NWCConnection {
   lud16?: string;
 }
 
+interface NWCCapabilities {
+  methods: NWCMethod[];
+}
+
+interface NWCInfoResponse extends NWCResponse {
+  result_type: 'get_info';
+  result: {
+    alias: string;
+    pubkey: string;
+    network: string;
+    block_height: number;
+    block_hash: string;
+    methods: NWCMethod[];
+  };
+}
+
+interface LightningInvoice {
+  bolt11: string;
+  payment_hash: string;
+  payment_request: string;
+  amount_msat: number;
+  description: string;
+  expires_at: number;
+  checking_id: string;
+}
+
 export class NWCClient {
   private connection: NWCConnection;
   private clientSecret: Uint8Array;
   private clientPubkey: string;
+  private capabilities?: NWCCapabilities;
 
   constructor(connectionString: string) {
     this.connection = this.parseConnectionString(connectionString);
@@ -165,64 +192,47 @@ export class NWCClient {
     return bytes;
   }
 
-  private bytesToHex(bytes: Uint8Array): string {
+  private static bytesToHex(bytes: Uint8Array): string {
     return Array.from(bytes)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
   }
 
-  async makeInvoice(params: {
-    amount: number;
-    description?: string;
-    expiry?: number;
-  }): Promise<MakeInvoiceResponse> {
-    const request: MakeInvoiceRequest = {
-      method: 'make_invoice',
-      params: {
-        amount: params.amount,
-        description: params.description,
-        expiry: params.expiry || 3600, // 1 hour default
-      },
-    };
+  private async checkCapabilities(): Promise<void> {
+    if (this.capabilities) return;
 
-    return this.sendRequest(request) as Promise<MakeInvoiceResponse>;
-  }
+    try {
+      const response = await this.sendRequest({
+        method: 'get_info',
+        params: {}
+      }) as NWCInfoResponse;
 
-  async payInvoice(params: {
-    invoice: string;
-    amount?: number;
-  }): Promise<PayInvoiceResponse> {
-    const request: PayInvoiceRequest = {
-      method: 'pay_invoice',
-      params,
-    };
+      if (response.error) {
+        throw new Error(`Failed to get wallet capabilities: ${response.error.message}`);
+      }
 
-    return this.sendRequest(request) as Promise<PayInvoiceResponse>;
-  }
+      this.capabilities = {
+        methods: response.result.methods
+      };
 
-  async getInfo(): Promise<GetInfoResponse> {
-    const request: GetInfoRequest = {
-      method: 'get_info',
-      params: {},
-    };
-
-    return this.sendRequest(request) as Promise<GetInfoResponse>;
+      console.log('✅ NWC capabilities:', this.capabilities);
+    } catch (error) {
+      console.error('❌ Failed to get wallet capabilities:', error);
+      // Default to basic capabilities if we can't get them
+      this.capabilities = {
+        methods: ['make_invoice', 'pay_invoice']
+      };
+    }
   }
 
   private async sendRequest(request: NWCRequest): Promise<NWCResponse> {
     try {
-      // Validate the method
-      const validMethods: NWCMethod[] = [
-        'get_info',
-        'pay_invoice',
-        'make_invoice',
-        'lookup_invoice',
-        'list_transactions',
-        'get_balance'
-      ];
+      // Check capabilities first
+      await this.checkCapabilities();
 
-      if (!validMethods.includes(request.method as NWCMethod)) {
-        throw new Error(`Invalid NWC method: ${request.method}`);
+      // Validate the method against wallet capabilities
+      if (!this.capabilities?.methods.includes(request.method as NWCMethod)) {
+        throw new Error(`Unsupported NWC method: ${request.method}. Supported methods: ${this.capabilities?.methods.join(', ')}`);
       }
 
       // Encrypt the request
@@ -386,12 +396,6 @@ export class NWCClient {
     };
   }
 
-  private static bytesToHex(bytes: Uint8Array): string {
-    return Array.from(bytes)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-
   // Helper method to create an npub from wallet pubkey
   get walletNpub(): string {
     return nip19.npubEncode(this.connection.walletPubkey);
@@ -400,6 +404,47 @@ export class NWCClient {
   // Helper method to get connection info
   get connectionInfo(): NWCConnection {
     return { ...this.connection };
+  }
+
+  async makeInvoice(amount: number, description: string): Promise<LightningInvoice> {
+    try {
+      const response = await this.sendRequest({
+        method: 'make_invoice',
+        params: {
+          amount: amount,
+          description: description
+        }
+      });
+
+      if (response.error) {
+        throw new Error(`Failed to create invoice: ${response.error.message}`);
+      }
+
+      return response.result as LightningInvoice;
+    } catch (error) {
+      console.error('❌ Failed to create invoice:', error);
+      throw error;
+    }
+  }
+
+  async payInvoice(paymentRequest: string): Promise<{ preimage: string }> {
+    try {
+      const response = await this.sendRequest({
+        method: 'pay_invoice',
+        params: {
+          invoice: paymentRequest
+        }
+      });
+
+      if (response.error) {
+        throw new Error(`Failed to pay invoice: ${response.error.message}`);
+      }
+
+      return response.result as { preimage: string };
+    } catch (error) {
+      console.error('❌ Failed to pay invoice:', error);
+      throw error;
+    }
   }
 }
 
