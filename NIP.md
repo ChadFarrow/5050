@@ -145,3 +145,25 @@ Example:
 - Use cryptographically secure random number generation for winner selection
 - Consider implementing dispute resolution mechanisms
 - Validate fundraiser end dates and prevent manipulation
+
+## NIP-47 Integration
+
+This NIP integrates with NIP-47 for Lightning payments. The following NIP-47 methods are used:
+
+1. `get_balance`: To check the wallet balance
+2. `make_invoice`: To create a Lightning invoice for donations
+3. `pay_invoice`: To pay invoices (used by the organizer to split funds)
+
+### Payment Flow
+
+1. Donor connects their NIP-47 wallet
+2. Donor selects an amount to donate
+3. Client creates a Lightning invoice using NIP-47 `make_invoice`
+4. Client publishes a kind 30051 event with the invoice
+5. Organizer receives the payment and splits it 50/50 with the cause
+
+- Organizers should verify that the invoice has been paid before updating the `raised` amount
+- Donors should verify that the invoice is valid and from the correct organizer
+- The 50/50 split should be handled by the organizer's Lightning node configuration
+- NIP-47 wallet connections should be secured with proper authentication
+- All amounts should be validated to prevent overflow or underflow

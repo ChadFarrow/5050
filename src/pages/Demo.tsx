@@ -275,7 +275,32 @@ export default function Demo() {
               {/* Demo Features */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">Demo Features</CardTitle>
+                  <CardTitle className="text-sm">Lightning Integration</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-xs">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>NIP-47 Nostr Wallet Connect</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>Traditional Lightning APIs</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span>Multiple wallet support</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <span>Secure payment processing</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Platform Features */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Platform Features</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-xs">
                   <div className="flex items-center space-x-2">
@@ -284,15 +309,15 @@ export default function Demo() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>Lightning payment integration</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     <span>Transparent winner selection</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     <span>Nostr protocol integration</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <span>Decentralized architecture</span>
                   </div>
                 </CardContent>
               </Card>

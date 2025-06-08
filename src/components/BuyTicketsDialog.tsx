@@ -13,6 +13,7 @@ import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { useToast } from "@/hooks/useToast";
 import { formatSats } from "@/lib/utils";
+import { AlbyNWCClient, enableWebLN, payInvoiceWithWebLN } from "@/lib/nwc-relay";
 import type { Campaign } from "@/hooks/useCampaigns";
 
 interface BuyTicketsDialogProps {
@@ -33,7 +34,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
   const tickets = parseInt(ticketCount) || 0;
   const totalCost = tickets * campaign.ticketPrice;
-  const totalCostSats = Math.floor(totalCost / 1000);
+  const _totalCostSats = Math.floor(totalCost / 1000);
 
   const currentPot = stats?.totalRaised || 0;
   const projectedPot = currentPot + totalCost;
@@ -66,58 +67,152 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
     try {
       setIsProcessingPayment(true);
 
-      // TODO: In a real implementation, this would:
-      // 1. Generate a Lightning invoice for the total cost
-      // 2. Present it to the user for payment
-      // 3. Wait for payment confirmation
-      // 4. Create the ticket purchase event with payment proof
-
-      // For this demo, we'll simulate the process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Generate mock payment data
-      const paymentHash = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      
-      const bolt11 = `lnbc${totalCostSats}u1p...mock_invoice_${Date.now()}`;
-      
       // Generate unique purchase ID
       const purchaseId = `purchase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Create campaign coordinate
       const campaignCoordinate = `31950:${campaign.pubkey}:${campaign.dTag}`;
 
-      // Build tags for ticket purchase event
-      const tags: string[][] = [
-        ["d", purchaseId],
-        ["a", campaignCoordinate],
-        ["amount", totalCost.toString()],
-        ["tickets", tickets.toString()],
-        ["bolt11", bolt11],
-        ["payment_hash", paymentHash],
-      ];
+      // Step 1: Check if campaign has NWC connection for invoice generation
+      const nwcTag = campaign.tags.find(tag => tag[0] === 'nwc');
+      if (!nwcTag || !nwcTag[1]) {
+        toast({
+          title: "Lightning Setup Required",
+          description: "This campaign doesn't have Lightning payments configured. The creator needs to add their NWC connection.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      publishEvent({
-        kind: 31951,
-        content: message.trim(),
-        tags,
+      // Step 2: Decrypt the NWC connection string (it's encrypted with campaign creator's key)
+      if (!user.signer.nip44) {
+        toast({
+          title: "Encryption Not Supported",
+          description: "Your Nostr client doesn't support the encryption needed to process Lightning payments.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let creatorNWCConnection: string;
+      try {
+        // Note: In a real implementation, we'd need the campaign creator to decrypt this
+        // For now, we'll show an error since we can't decrypt someone else's encrypted data
+        toast({
+          title: "Invoice Generation Not Yet Supported",
+          description: "NWC invoice generation through campaign creators is not yet implemented. This requires additional infrastructure.",
+          variant: "destructive",
+        });
+        return;
+
+        // This would be the proper flow once fully implemented:
+        /*
+        creatorNWCConnection = await user.signer.nip44.decrypt(campaign.pubkey, nwcTag[1]);
+        */
+      } catch {
+        toast({
+          title: "Failed to Access Lightning Setup",
+          description: "Could not access the campaign's Lightning configuration.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Step 3: Generate invoice through campaign creator's NWC wallet
+      const nwcClient = new AlbyNWCClient(creatorNWCConnection);
+      
+      toast({
+        title: "Generating Invoice...",
+        description: "Connecting to campaign creator's Lightning wallet",
       });
+
+      try {
+        await nwcClient.initialize();
+      } catch (error) {
+        toast({
+          title: "Wallet Connection Failed",
+          description: "Could not connect to campaign creator's Lightning wallet. Please try again later.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const invoiceResponse = await nwcClient.makeInvoice({
+        amount: totalCost,
+        description: `PodRaffle tickets for ${campaign.title} - ${tickets} ticket${tickets > 1 ? 's' : ''}`,
+        expiry: 3600, // 1 hour
+      });
+
+      if (invoiceResponse.error || !invoiceResponse.result) {
+        toast({
+          title: "Invoice Generation Failed",
+          description: invoiceResponse.error?.message || "Could not generate Lightning invoice",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const result = invoiceResponse.result as any;
+      const bolt11 = result.invoice;
+      const paymentHash = result.payment_hash;
+
+      // Step 4: Pay the invoice through user's WebLN wallet
+      const weblnEnabled = await enableWebLN();
+      if (!weblnEnabled) {
+        toast({
+          title: "Lightning Wallet Required",
+          description: "Please install a WebLN-compatible Lightning wallet (like Alby browser extension) to make payments.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
-        title: "Tickets Purchased!",
-        description: `Successfully bought ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`,
+        title: "Processing Payment...",
+        description: "Please confirm the payment in your Lightning wallet",
       });
 
-      // Reset form and close dialog
-      setTicketCount("1");
-      setMessage("");
-      onOpenChange(false);
+      try {
+        const paymentResponse = await payInvoiceWithWebLN(bolt11);
+          
+          // Step 5: Create ticket purchase event with payment proof
+          const tags: string[][] = [
+            ["d", purchaseId],
+            ["a", campaignCoordinate],
+            ["amount", totalCost.toString()],
+            ["tickets", tickets.toString()],
+            ["bolt11", bolt11],
+            ["payment_hash", paymentHash],
+            ["preimage", paymentResponse.preimage],
+          ];
+
+          publishEvent({
+            kind: 31951,
+            content: message.trim(),
+            tags,
+          });
+
+          toast({
+            title: "Tickets Purchased!",
+            description: `Successfully bought ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`,
+          });
+
+          setTicketCount("1");
+          setMessage("");
+          onOpenChange(false);
+
+      } catch (error) {
+        toast({
+          title: "Payment Failed",
+          description: error instanceof Error ? error.message : "Failed to pay Lightning invoice. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Error buying tickets:", error);
       toast({
         title: "Purchase Failed",
-        description: "Failed to purchase tickets. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to purchase tickets. Please try again.",
         variant: "destructive",
       });
     } finally {

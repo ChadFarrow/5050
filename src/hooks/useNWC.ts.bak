@@ -1,0 +1,148 @@
+import { useCallback, useEffect, useState } from 'react';
+import { type LightningInvoice } from '@/lib/lightning';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useToast } from '@/hooks/useToast';
+import { NWCClient } from '@/lib/nwc';
+
+interface NWCConfigState {
+  connectionString: string;
+  enabled: boolean;
+}
+
+export function useNWC() {
+  const { toast } = useToast();
+  const [nwcConfig, setNWCConfig] = useLocalStorage<NWCConfigState>('nwc-config', {
+    connectionString: '',
+    enabled: false
+  });
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isWebLNEnabled, setIsWebLNEnabled] = useState(false);
+
+  // Check WebLN availability and status
+  useEffect(() => {
+    const checkWebLN = async () => {
+      try {
+        if (typeof window.webln !== 'undefined') {
+          try {
+            // Try to enable WebLN
+            await window.webln.enable();
+            setIsWebLNEnabled(true);
+          } catch (error) {
+            console.log('WebLN is available but not enabled');
+            setIsWebLNEnabled(false);
+            toast({
+              title: "WebLN Available",
+              description: "Please unlock your wallet and approve the connection request.",
+              duration: 5000,
+            });
+          }
+        } else {
+          console.log('WebLN is not available');
+          setIsWebLNEnabled(false);
+        }
+      } catch (error) {
+        console.error('Error checking WebLN:', error);
+        setIsWebLNEnabled(false);
+      }
+    };
+
+    checkWebLN();
+  }, [toast]);
+
+  const createInvoice = useCallback(async (amount: number, description: string): Promise<LightningInvoice> => {
+    console.log('Creating invoice with amount:', amount, 'description:', description);
+    console.log('NWC state:', { nwcConfig, isDemoMode, isWebLNEnabled });
+
+    try {
+      // First try WebLN if available
+      if (typeof window.webln !== 'undefined') {
+        try {
+          // Try to enable WebLN
+          await window.webln.enable();
+          setIsWebLNEnabled(true);
+
+          // Create invoice using WebLN
+          const response = await window.webln.makeInvoice({
+            amount: Math.floor(amount / 1000), // Convert msats to sats
+            defaultMemo: description
+          });
+
+          if (!response.paymentRequest) {
+            throw new Error('No payment request in WebLN response');
+          }
+
+          // Generate a random payment hash if not provided
+          const paymentHash = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+
+          return {
+            bolt11: response.paymentRequest,
+            payment_hash: paymentHash,
+            payment_request: response.paymentRequest,
+            amount_msat: amount,
+            description: description,
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+            checking_id: paymentHash
+          };
+        } catch (weblnError) {
+          console.error('WebLN error:', weblnError);
+          if (weblnError instanceof Error && weblnError.message.includes('User rejected')) {
+            throw new Error('Please approve the connection request in your wallet');
+          }
+          // Fall through to NWC if WebLN fails
+        }
+      }
+
+      // Then try NWC if configured
+      if (nwcConfig.connectionString && nwcConfig.enabled) {
+        try {
+          const client = new NWCClient(nwcConfig.connectionString);
+          return await client.makeInvoice(amount, description);
+        } catch (_nwcError) {
+          console.error('NWC error:', _nwcError);
+          // Fall through to demo mode if NWC fails
+        }
+      }
+
+      // Finally, fall back to demo mode
+      console.log('Falling back to demo mode');
+      setIsDemoMode(true);
+      
+      const mockInvoice: LightningInvoice = {
+        bolt11: `lnbc${amount}n1demo_noconfig_${Date.now()}`,
+        payment_hash: 'mock_payment_hash',
+        payment_request: `lnbc${amount}n1demo_noconfig_${Date.now()}`,
+        amount_msat: amount,
+        description: description,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        checking_id: 'mock_checking_id'
+      };
+
+      toast({
+        title: "Demo Mode",
+        description: "Using a demo invoice. Configure a real NWC wallet for actual payments.",
+        duration: 5000,
+      });
+
+      return mockInvoice;
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create invoice",
+        variant: "destructive",
+        duration: 5000,
+      });
+      throw error;
+    }
+  }, [nwcConfig, isDemoMode, isWebLNEnabled, toast]);
+
+  return {
+    createInvoice,
+    isDemoMode,
+    isWebLNEnabled,
+    nwcConfig,
+    setNWCConfig
+  };
+}
