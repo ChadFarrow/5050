@@ -90,14 +90,18 @@ type NWCRequest = {
   params: Record<string, unknown>;
 };
 
-type NWCResponse = {
-  result_type: string;
-  result?: Record<string, unknown>;
-  error?: {
-    code: string;
-    message: string;
-  };
-};
+type NWCMethod = 'get_info' | 'pay_invoice' | 'make_invoice' | 'lookup_invoice' | 'list_transactions' | 'get_balance';
+
+interface NWCError {
+  code: 'RATE_LIMITED' | 'NOT_IMPLEMENTED' | 'INSUFFICIENT_BALANCE' | 'QUOTA_EXCEEDED' | 'RESTRICTED' | 'UNAUTHORIZED' | 'INTERNAL' | 'OTHER';
+  message: string;
+}
+
+interface NWCResponse {
+  result_type: NWCMethod;
+  error?: NWCError;
+  result?: any;
+}
 
 export interface NWCConnection {
   walletPubkey: string;
@@ -207,6 +211,20 @@ export class NWCClient {
 
   private async sendRequest(request: NWCRequest): Promise<NWCResponse> {
     try {
+      // Validate the method
+      const validMethods: NWCMethod[] = [
+        'get_info',
+        'pay_invoice',
+        'make_invoice',
+        'lookup_invoice',
+        'list_transactions',
+        'get_balance'
+      ];
+
+      if (!validMethods.includes(request.method as NWCMethod)) {
+        throw new Error(`Invalid NWC method: ${request.method}`);
+      }
+
       // Encrypt the request
       const encryptedContent = await nip04.encrypt(
         this.connection.secret,
@@ -230,6 +248,7 @@ export class NWCClient {
 
       // Create a WebSocket connection to the relay
       const ws = new WebSocket(this.connection.relayUrl);
+      const subscriptionId = `nwc-${Date.now()}`;
 
       // Set up a promise to handle the response
       const responsePromise = new Promise<NWCResponse>((resolve, reject) => {
@@ -244,7 +263,7 @@ export class NWCClient {
           // Subscribe to response events
           ws.send(JSON.stringify([
             'REQ',
-            'nwc-response',
+            subscriptionId,
             {
               kinds: [23195], // NIP-47 response
               authors: [this.connection.walletPubkey],
@@ -255,7 +274,6 @@ export class NWCClient {
 
           // Send the request event
           ws.send(JSON.stringify(['EVENT', signedEvent]));
-          console.log('📤 NWC request sent:', request.method);
         };
 
         ws.onmessage = async (message) => {
@@ -263,48 +281,59 @@ export class NWCClient {
             const data = JSON.parse(message.data);
             
             // Handle subscription confirmation
-            if (data[0] === 'EOSE') {
+            if (data[0] === 'EOSE' && data[1] === subscriptionId) {
               console.log('✅ NWC subscription confirmed');
               return;
             }
-            
+
             // Handle response event
-            if (data[0] === 'EVENT') {
+            if (data[0] === 'EVENT' && data[1] === subscriptionId) {
               const responseEvent = data[2];
               
-              // Verify the response is from the wallet
-              if (responseEvent.pubkey !== this.connection.walletPubkey) {
-                console.warn('⚠️ Unexpected pubkey in response:', responseEvent.pubkey);
+              // Verify the response event
+              if (responseEvent.kind !== 23195) {
+                console.warn('⚠️ Unexpected event kind:', responseEvent.kind);
                 return;
               }
-              
+
+              if (responseEvent.pubkey !== this.connection.walletPubkey) {
+                console.warn('⚠️ Unexpected pubkey:', responseEvent.pubkey);
+                return;
+              }
+
               // Decrypt the response
               const decryptedContent = await nip04.decrypt(
                 this.connection.secret,
                 this.connection.walletPubkey,
                 responseEvent.content
               );
-              
+
               const response = JSON.parse(decryptedContent) as NWCResponse;
               
-              // Check for errors
+              // Handle errors
               if (response.error) {
                 console.error('❌ NWC error:', response.error);
-                reject(new Error(`NWC Error: ${response.error.message}`));
+                const errorMessage = this.getErrorMessage(response.error);
+                reject(new Error(errorMessage));
                 return;
               }
+
+              // Clean up
+              clearTimeout(timeout);
+              ws.close();
               
-              console.log('📥 NWC response received:', response);
+              console.log('✅ NWC response received:', response);
               resolve(response);
             }
           } catch (error) {
-            console.error('❌ NWC message handling error:', error);
+            console.error('❌ Error handling NWC message:', error);
             reject(error);
           }
         };
 
         ws.onerror = (error) => {
           console.error('❌ NWC WebSocket error:', error);
+          clearTimeout(timeout);
           reject(new Error('NWC WebSocket error'));
         };
 
@@ -314,14 +343,26 @@ export class NWCClient {
         };
       });
 
-      // Wait for the response
-      const response = await responsePromise;
-      return response;
-      
+      return await responsePromise;
     } catch (error) {
       console.error('❌ NWC request failed:', error);
       throw error;
     }
+  }
+
+  private getErrorMessage(error: NWCError): string {
+    const errorMessages: Record<NWCError['code'], string> = {
+      RATE_LIMITED: 'Too many requests. Please try again later.',
+      NOT_IMPLEMENTED: 'This method is not supported by the wallet.',
+      INSUFFICIENT_BALANCE: 'Insufficient balance to complete the transaction.',
+      QUOTA_EXCEEDED: 'You have exceeded your quota for this operation.',
+      RESTRICTED: 'This operation is restricted.',
+      UNAUTHORIZED: 'You are not authorized to perform this operation.',
+      INTERNAL: 'An internal error occurred.',
+      OTHER: error.message || 'An unknown error occurred.'
+    };
+
+    return errorMessages[error.code] || error.message;
   }
 
   static generateConnectionString(params: {
