@@ -5,6 +5,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useAppContext } from '@/hooks/useAppContext';
 import { type NWCConfig, type LightningInvoice } from '@/lib/lightning';
+import { useNWCReal } from './useNWCReal';
 
 // Note: These interfaces would be used in a full NWC implementation
 interface _NWCRequest {
@@ -27,6 +28,7 @@ export function useNWC() {
   const { config } = useAppContext();
   const [nwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
   const [isConfigured, setIsConfigured] = useState(false);
+  const useNWC = useNWCReal; 
 
   useEffect(() => {
     setIsConfigured(!!nwcConfig && !!user?.signer);
