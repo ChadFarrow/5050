@@ -58,11 +58,15 @@ export function useNWC() {
           // Check for WebLN availability first
           if (typeof window !== 'undefined' && (window as any).webln) {
             console.log('💡 WebLN is available in this browser');
-            toast({
-              title: 'Connecting to Wallet',
-              description: 'Please approve the connection request in your wallet extension',
-              variant: 'default',
-            });
+            const webln = (window as any).webln;
+            
+            if (!webln.enabled) {
+              toast({
+                title: 'Wallet Connection Required',
+                description: 'Please unlock your wallet and approve the connection request',
+                variant: 'default',
+              });
+            }
           }
           
           // Try the real NWC implementation first
@@ -77,7 +81,7 @@ export function useNWC() {
             if (error.message.includes('WebLN connection') || error.message.includes('WebLN is not enabled')) {
               toast({
                 title: 'Wallet Connection Required',
-                description: '1. Make sure your wallet is unlocked\n2. Look for a popup from your wallet\n3. Click "Approve" or "Connect"\n4. Try again',
+                description: '1. Unlock your wallet\n2. Look for a popup from your wallet\n3. Click "Approve" or "Connect"\n4. Try again',
                 variant: 'destructive',
               });
             } else {

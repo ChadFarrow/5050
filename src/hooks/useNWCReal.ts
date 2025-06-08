@@ -109,21 +109,25 @@ export function useNWCReal() {
           console.log('💡 Using WebLN makeInvoice for NWC request');
           
           try {
-            // Enable WebLN if not already enabled
-            if (!webln.enabled) {
+            // Check if WebLN is already enabled
+            if (webln.enabled) {
+              console.log('✅ WebLN is already enabled');
+            } else {
               console.log('🔑 Requesting WebLN permission...');
               try {
+                // Request WebLN permission
                 await webln.enable();
                 console.log('✅ WebLN permission granted');
               } catch (enableError) {
                 console.error('❌ WebLN permission denied:', enableError);
-                throw new Error('Please approve the WebLN connection in your wallet to create invoices');
+                throw new Error('WebLN permission was denied. Please check your wallet extension and try again.');
               }
             }
             
-            // Validate WebLN state
+            // Double check WebLN state
             if (!webln.enabled) {
-              throw new Error('WebLN is not enabled. Please approve the connection in your wallet.');
+              console.error('❌ WebLN is still not enabled after enable attempt');
+              throw new Error('WebLN is not enabled. Please check your wallet extension and make sure it\'s properly connected.');
             }
             
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -153,18 +157,20 @@ export function useNWCReal() {
             console.error('❌ WebLN error:', weblnError);
             if (weblnError instanceof Error) {
               if (weblnError.message.includes('enable request was rejected')) {
-                throw new Error('Please approve the WebLN connection in your wallet to create invoices');
+                throw new Error('WebLN permission was denied. Please check your wallet extension and try again.');
               } else if (weblnError.message.includes('not enabled')) {
-                throw new Error('WebLN is not enabled. Please approve the connection in your wallet.');
+                throw new Error('WebLN is not enabled. Please check your wallet extension and make sure it\'s properly connected.');
               }
             }
             throw new Error(`WebLN error: ${weblnError instanceof Error ? weblnError.message : 'Unknown WebLN error'}`);
           }
         }
+      } else {
+        console.log('⚠️ WebLN not available in this browser');
       }
       
       // If WebLN is not available or method not supported, use NWC client
-      console.log('⚠️  WebLN not available, using NWC client');
+      console.log('⚠️  Using NWC client as fallback');
       
       switch (method) {
         case 'make_invoice':
