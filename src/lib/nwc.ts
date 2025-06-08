@@ -10,80 +10,7 @@ declare global {
   }
 }
 
-// Import types from global definitions
-type MakeInvoiceRequest = {
-  method: 'make_invoice';
-  params: {
-    amount: number;
-    description?: string;
-    description_hash?: string;
-    expiry?: number;
-  };
-};
-
-type MakeInvoiceResponse = {
-  result_type: 'make_invoice';
-  result?: {
-    type: 'incoming';
-    invoice: string;
-    description?: string;
-    description_hash?: string;
-    preimage?: string;
-    payment_hash: string;
-    amount: number;
-    fees_paid?: number;
-    created_at: number;
-    expires_at?: number;
-    metadata?: Record<string, unknown>;
-  };
-  error?: {
-    code: string;
-    message: string;
-  };
-};
-
-type PayInvoiceRequest = {
-  method: 'pay_invoice';
-  params: {
-    invoice: string;
-    amount?: number;
-  };
-};
-
-type PayInvoiceResponse = {
-  result_type: 'pay_invoice';
-  result?: {
-    preimage: string;
-    fees_paid?: number;
-  };
-  error?: {
-    code: string;
-    message: string;
-  };
-};
-
-type GetInfoRequest = {
-  method: 'get_info';
-  params: Record<string, never>;
-};
-
-type GetInfoResponse = {
-  result_type: 'get_info';
-  result?: {
-    alias: string;
-    color: string;
-    pubkey: string;
-    network: string;
-    block_height: number;
-    block_hash: string;
-    methods: string[];
-    notifications?: string[];
-  };
-  error?: {
-    code: string;
-    message: string;
-  };
-};
+// NWC request and response types are defined inline where used
 
 type NWCRequest = {
   method: string;
@@ -100,7 +27,7 @@ interface NWCError {
 interface NWCResponse {
   result_type: NWCMethod;
   error?: NWCError;
-  result?: any;
+  result?: Record<string, unknown>;
 }
 
 export interface NWCConnection {
@@ -427,7 +354,7 @@ export class NWCClient {
         throw new Error(`Failed to create invoice: ${response.error.message}`);
       }
 
-      return response.result as LightningInvoice;
+      return response.result as unknown as LightningInvoice;
     } catch (error) {
       console.error('❌ Failed to create invoice:', error);
       throw error;

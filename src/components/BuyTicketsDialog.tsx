@@ -36,7 +36,11 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   const { data: stats } = useCampaignStats(campaign.pubkey, campaign.dTag);
   const { toast } = useToast();
   const [_nwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
-  const { isConfigured: isNWCConfigured, createInvoice: createNWCInvoice, isCreatingInvoice: isCreatingNWCInvoice } = useNWC();
+  const nwcHook = useNWC();
+  const { createInvoice: createNWCInvoice, nwcConfig } = nwcHook;
+  
+  // Check if NWC is configured (has a connection string)
+  const isNWCConfigured = nwcConfig.connectionString && nwcConfig.enabled;
   
   const [ticketCount, setTicketCount] = useState("1");
   const [message, setMessage] = useState("");
@@ -99,11 +103,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       if (isNWCConfigured && createNWCInvoice) {
         try {
           console.log('🔄 Attempting NWC invoice creation...');
-          invoice = await createNWCInvoice({
-            amount: totalCost,
-            description,
-            expiry: 3600,
-          });
+          invoice = await createNWCInvoice(totalCost, description);
           console.log('✅ NWC invoice created successfully');
         } catch (nwcError) {
           error = nwcError instanceof Error ? nwcError : new Error('Unknown NWC error');
@@ -178,7 +178,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
         payment_request: `lnbc${Math.floor(totalCost / 1000)}n1demo_fallback_${Date.now()}`,
         amount_msat: totalCost,
-        description: `[DEMO FALLBACK] ${description}`,
+        description: `[DEMO FALLBACK] ${tickets} ticket${tickets > 1 ? 's' : ''} for ${campaign.title}`,
         expires_at: Date.now() + (3600 * 1000),
         checking_id: 'demo_fallback_' + Date.now(),
       };
@@ -270,7 +270,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   };
 
   const handleClose = () => {
-    if (!isPending && !isCreatingInvoice && !isCreatingNWCInvoice && currentStep !== 'invoice') {
+    if (!isPending && !isCreatingInvoice && currentStep !== 'invoice') {
       setTicketCount("1");
       setMessage("");
       setCurrentStep('form');
@@ -362,7 +362,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
                     max="100"
                     value={ticketCount}
                     onChange={(e) => setTicketCount(e.target.value)}
-                    disabled={isPending || isCreatingInvoice || isCreatingNWCInvoice}
+                    disabled={isPending || isCreatingInvoice}
                   />
                 </div>
 
@@ -373,7 +373,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
                     placeholder="Good luck everyone!"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    disabled={isPending || isCreatingInvoice || isCreatingNWCInvoice}
+                    disabled={isPending || isCreatingInvoice}
                     rows={2}
                   />
                 </div>
@@ -460,17 +460,17 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         {/* Action Buttons */}
         {currentStep === 'form' && (
           <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button variant="outline" onClick={handleClose} disabled={isPending || isCreatingInvoice || isCreatingNWCInvoice}>
+            <Button variant="outline" onClick={handleClose} disabled={isPending || isCreatingInvoice}>
               Cancel
             </Button>
             <Button 
               onClick={handleCreateInvoice} 
-              disabled={isPending || isCreatingInvoice || isCreatingNWCInvoice || tickets <= 0}
+              disabled={isPending || isCreatingInvoice || tickets <= 0}
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
             >
-              {(isCreatingInvoice || isCreatingNWCInvoice) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isCreatingInvoice && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Zap className="mr-2 h-4 w-4" />
-              {(isCreatingInvoice || isCreatingNWCInvoice) ? "Creating Invoice..." : `Create Lightning Invoice`}
+              {isCreatingInvoice ? "Creating Invoice..." : `Create Lightning Invoice`}
             </Button>
           </div>
         )}

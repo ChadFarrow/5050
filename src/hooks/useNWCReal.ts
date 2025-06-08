@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -19,9 +19,144 @@ interface NWCResponse {
 export function useNWCReal() {
   const { nostr: _nostr } = useNostr();
   const { user } = useCurrentUser();
-  const [nwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
+  const [nwcConfig, setNwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
   const [isConfigured, setIsConfigured] = useState(false);
   const [nwcClient, setNwcClient] = useState<NWCClient | null>(null);
+
+  const validateNWCConfig = (config: NWCConfig): boolean => {
+    try {
+      console.log('🔍 Validating NWC config:', {
+        hasConnectionString: !!config.connectionString,
+        hasWalletPubkey: !!config.walletPubkey,
+        hasRelays: !!config.relays?.length,
+        hasSecret: !!config.secret,
+        hasLud16: !!config.lud16
+      });
+
+      if (!config.connectionString) {
+        console.error('❌ Missing connection string');
+        return false;
+      }
+
+      if (!config.connectionString.startsWith('nostr+walletconnect://')) {
+        console.error('❌ Invalid connection string format');
+        return false;
+      }
+
+      if (!config.walletPubkey) {
+        console.error('❌ Missing wallet pubkey');
+        return false;
+      }
+
+      if (!config.relays || config.relays.length === 0) {
+        console.error('❌ Missing relays');
+        return false;
+      }
+
+      if (!config.secret) {
+        console.error('❌ Missing secret');
+        return false;
+      }
+
+      if (!config.lud16) {
+        console.error('❌ Missing lud16');
+        return false;
+      }
+
+      console.log('✅ NWC config validation passed');
+      return true;
+    } catch (error) {
+      console.error('❌ Error validating NWC config:', error);
+      return false;
+    }
+  };
+
+  const parseConnectionString = (connectionString: string): NWCConfig => {
+    try {
+      console.log('🔍 Parsing connection string:', connectionString);
+      
+      // Remove the protocol prefix
+      const withoutPrefix = connectionString.replace('nostr+walletconnect://', '');
+      
+      // Split into pubkey and query string
+      const [pubkey, queryString] = withoutPrefix.split('?');
+      
+      if (!pubkey || !queryString) {
+        throw new Error('Invalid connection string format');
+      }
+
+      // Parse query parameters
+      const params = new URLSearchParams(queryString);
+      
+      const config: NWCConfig = {
+        connectionString,
+        walletPubkey: pubkey,
+        relays: params.get('relay')?.split(',') || [],
+        secret: params.get('secret') || '',
+        lud16: params.get('lud16') || ''
+      };
+
+      console.log('✅ Parsed NWC config:', {
+        walletPubkey: config.walletPubkey,
+        relays: config.relays,
+        hasSecret: !!config.secret,
+        lud16: config.lud16
+      });
+
+      return config;
+    } catch (error) {
+      console.error('❌ Error parsing connection string:', error);
+      throw new Error('Failed to parse NWC connection string');
+    }
+  };
+
+  const initializeNWC = useCallback(async () => {
+    try {
+      console.log('🚀 Initializing NWC...');
+      
+      if (!user?.signer) {
+        console.error('❌ No signer available');
+        return;
+      }
+
+      const connectionString = localStorage.getItem('nwc-connection-string');
+      console.log('📡 Connection string from storage:', connectionString);
+
+      if (!connectionString) {
+        console.error('❌ No connection string found in storage');
+        return;
+      }
+
+      const config = parseConnectionString(connectionString);
+      console.log('🔧 Parsed NWC config:', config);
+
+      if (!validateNWCConfig(config)) {
+        console.error('❌ Invalid NWC config');
+        return;
+      }
+
+      setNwcConfig(config);
+      console.log('✅ NWC config set');
+
+      const client = new NWCClient(config.connectionString);
+      console.log('✅ NWC client created');
+
+      setNwcClient(client);
+      console.log('✅ NWC client set');
+
+      // Test the connection
+      try {
+        console.log('🧪 Testing NWC connection...');
+        const balance = await client.getBalance();
+        console.log('✅ NWC connection test successful, balance:', balance);
+      } catch (error) {
+        console.error('❌ NWC connection test failed:', error);
+      }
+
+    } catch (error) {
+      console.error('❌ Error initializing NWC:', error);
+    }
+  }, [user?.signer]);
 
   useEffect(() => {
     // Validate NWC configuration

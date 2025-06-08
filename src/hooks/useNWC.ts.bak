@@ -27,7 +27,7 @@ export function useNWC() {
             // Try to enable WebLN
             await window.webln.enable();
             setIsWebLNEnabled(true);
-          } catch {
+          } catch (error) {
             console.log('WebLN is available but not enabled');
             setIsWebLNEnabled(false);
             toast({
@@ -130,7 +130,7 @@ export function useNWC() {
       console.error('Error creating invoice:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create invoice",
+        description: error.message || "Failed to create invoice",
         variant: "destructive",
         duration: 5000,
       });

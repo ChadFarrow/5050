@@ -103,9 +103,7 @@ export function useFundraiserWallet() {
 
   return {
     isConfigured: nwc.isConfigured,
-    walletInfo: nwc.walletInfo,
     balance: nwc.balance,
-    isLoadingInfo: nwc.isLoadingInfo,
     isLoadingBalance: nwc.isLoadingBalance,
     configureWallet,
     createFundraiserInvoice,
