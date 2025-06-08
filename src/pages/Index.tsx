@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useFundraisers } from "@/hooks/useCampaigns";
 import { CampaignCard } from "@/components/CampaignCard";
 import { CreateCampaignDialog } from "@/components/CreateCampaignDialog";
+import { LightningConfig } from "@/components/LightningConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RelaySelector } from "@/components/RelaySelector";
 
@@ -49,13 +50,17 @@ const Index = () => {
               <div className="hidden sm:block">
                 <RelaySelector />
               </div>
+              <div className="hidden sm:block">
+                <LightningConfig />
+              </div>
               <LoginArea className="max-w-32 sm:max-w-60" />
             </div>
           </div>
           
-          {/* Mobile relay selector */}
-          <div className="sm:hidden mt-3 pt-3 border-t">
+          {/* Mobile controls */}
+          <div className="sm:hidden mt-3 pt-3 border-t space-y-2">
             <RelaySelector className="w-full" />
+            <LightningConfig />
           </div>
         </div>
       </header>
@@ -280,6 +285,7 @@ const Index = () => {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>• Nostr Protocol</li>
                 <li>• Lightning Network</li>
+                <li>• NIP-47 Wallet Connect</li>
                 <li>• React & TypeScript</li>
                 <li>• Open Source</li>
               </ul>
