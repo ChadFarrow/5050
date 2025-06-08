@@ -170,22 +170,36 @@ export function useNWCReal() {
       }
       
       // If WebLN is not available or method not supported, use NWC client
-      console.log('⚠️  Using NWC client as fallback');
+      console.log('⚠️ Using NWC client as fallback');
+      
+      // Only support core methods that are widely implemented
+      const supportedMethods = ['make_invoice', 'pay_invoice'];
+      
+      if (!supportedMethods.includes(method)) {
+        throw new Error(`Unsupported NWC method: ${method}. Supported methods: ${supportedMethods.join(', ')}`);
+      }
       
       switch (method) {
         case 'make_invoice':
-          return await nwcClient.makeInvoice({
-            amount: params.amount as number,
-            description: params.description as string,
-            expiry: params.expiry as number,
-          });
+          const invoice = await nwcClient.makeInvoice(params.amount as number, params.description as string);
+          return {
+            result_type: 'make_invoice',
+            result: {
+              invoice: invoice.bolt11,
+              payment_hash: invoice.payment_hash,
+              amount: invoice.amount_msat,
+              description: invoice.description,
+              expires_at: invoice.expires_at
+            }
+          };
         case 'pay_invoice':
-          return await nwcClient.payInvoice({
-            invoice: params.invoice as string,
-            amount: params.amount as number,
-          });
-        case 'get_info':
-          return await nwcClient.getInfo();
+          const payment = await nwcClient.payInvoice(params.invoice as string);
+          return {
+            result_type: 'pay_invoice',
+            result: {
+              preimage: payment.preimage
+            }
+          };
         default:
           throw new Error(`Unsupported NWC method: ${method}`);
       }
