@@ -174,14 +174,21 @@ export function LightningConfig({ onConfigured }: LightningConfigProps) {
       try {
         const parsedConfig = parseNWCConnectionString(nwcConnectionString);
         
+        // Save both the parsed config and the original connection string
+        const fullConfig = {
+          ...parsedConfig,
+          connectionString: nwcConnectionString
+        };
+        
         console.log('🔗 Parsed NWC Config:', {
           walletPubkey: parsedConfig.walletPubkey,
           relays: parsedConfig.relays,
           hasSecret: !!parsedConfig.secret,
-          lud16: parsedConfig.lud16
+          lud16: parsedConfig.lud16,
+          hasConnectionString: !!nwcConnectionString
         });
         
-        setNwcConfig(parsedConfig);
+        setNwcConfig(fullConfig);
         
         toast({
           title: 'Configuration Saved',

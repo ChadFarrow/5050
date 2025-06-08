@@ -93,42 +93,50 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
       const description = `${tickets} ticket${tickets > 1 ? 's' : ''} for ${campaign.title}`;
       let invoice: LightningInvoiceType;
+      let error: Error | null = null;
 
       // Try NWC first if configured
       if (isNWCConfigured && createNWCInvoice) {
         try {
-          // createNWCInvoice returns a LightningInvoice directly
+          console.log('🔄 Attempting NWC invoice creation...');
           invoice = await createNWCInvoice({
-            amount: totalCost, // amount in msats
+            amount: totalCost,
             description,
-            expiry: 3600, // 1 hour
+            expiry: 3600,
           });
+          console.log('✅ NWC invoice created successfully');
         } catch (nwcError) {
-          console.warn('NWC invoice creation failed:', nwcError);
+          error = nwcError instanceof Error ? nwcError : new Error('Unknown NWC error');
+          console.warn('⚠️ NWC invoice creation failed:', error);
+          
           // Check if we have a regular Lightning service configured
           if (lightningService.isConfigured()) {
-            console.log('Falling back to Lightning service');
-            invoice = await lightningService.createInvoice(totalCost, description, 3600);
+            try {
+              console.log('🔄 Falling back to Lightning service...');
+              invoice = await lightningService.createInvoice(totalCost, description, 3600);
+              console.log('✅ Lightning service invoice created successfully');
+            } catch (lightningError) {
+              error = lightningError instanceof Error ? lightningError : new Error('Unknown Lightning service error');
+              console.warn('⚠️ Lightning service failed:', error);
+              throw error; // Re-throw to trigger demo fallback
+            }
           } else {
-            // Create a demo invoice as final fallback
-            console.warn('No Lightning service configured, creating demo invoice');
-            invoice = {
-              bolt11: `lnbc${Math.floor(totalCost / 1000)}n1demo_fallback_${Date.now()}`,
-              payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
-              payment_request: `lnbc${Math.floor(totalCost / 1000)}n1demo_fallback_${Date.now()}`,
-              amount_msat: totalCost,
-              description: `[DEMO FALLBACK] ${description}`,
-              expires_at: Date.now() + (3600 * 1000),
-              checking_id: 'demo_fallback_' + Date.now(),
-            };
+            throw error; // Re-throw to trigger demo fallback
           }
         }
       } else if (lightningService.isConfigured()) {
-        // Use configured Lightning service
-        invoice = await lightningService.createInvoice(totalCost, description, 3600);
+        try {
+          console.log('🔄 Using Lightning service...');
+          invoice = await lightningService.createInvoice(totalCost, description, 3600);
+          console.log('✅ Lightning service invoice created successfully');
+        } catch (lightningError) {
+          error = lightningError instanceof Error ? lightningError : new Error('Unknown Lightning service error');
+          console.warn('⚠️ Lightning service failed:', error);
+          throw error; // Re-throw to trigger demo fallback
+        }
       } else {
         // No services configured - create a demo invoice with clear warning
-        console.warn('No Lightning services configured, creating demo invoice');
+        console.warn('⚠️ No Lightning services configured, creating demo invoice');
         invoice = {
           bolt11: `lnbc${Math.floor(totalCost / 1000)}n1demo_noconfig_${Date.now()}`,
           payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
@@ -148,7 +156,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       }
 
       if (!invoice.bolt11 || !invoice.payment_hash) {
-        throw new Error("Invalid invoice received");
+        throw new Error("Invalid invoice received: missing required fields");
       }
 
       setCurrentInvoice(invoice);
@@ -162,13 +170,29 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       });
 
     } catch (error) {
-      console.error("Error creating Lightning invoice:", error);
+      console.error("❌ Error creating Lightning invoice:", error);
+      
+      // Create a demo invoice as final fallback
+      const demoInvoice: LightningInvoiceType = {
+        bolt11: `lnbc${Math.floor(totalCost / 1000)}n1demo_fallback_${Date.now()}`,
+        payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
+        payment_request: `lnbc${Math.floor(totalCost / 1000)}n1demo_fallback_${Date.now()}`,
+        amount_msat: totalCost,
+        description: `[DEMO FALLBACK] ${description}`,
+        expires_at: Date.now() + (3600 * 1000),
+        checking_id: 'demo_fallback_' + Date.now(),
+      };
+
+      setCurrentInvoice(demoInvoice);
+      setPaymentHash(demoInvoice.payment_hash);
+      setCurrentStep('invoice');
+      setIsCreatingInvoice(false);
+
       toast({
-        title: "Invoice Creation Failed",
-        description: error instanceof Error ? error.message : "Failed to create Lightning invoice",
+        title: "Demo Invoice Created",
+        description: error instanceof Error ? error.message : "Failed to create real invoice. Using demo invoice.",
         variant: "destructive",
       });
-      setIsCreatingInvoice(false);
     }
   };
 

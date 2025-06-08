@@ -1,6 +1,15 @@
 import type { NostrEvent } from '@nostrify/nostrify';
 import { nip04, nip19, generateSecretKey, getPublicKey } from 'nostr-tools';
 
+// Add type definition for window.nostr
+declare global {
+  interface Window {
+    nostr: {
+      signEvent(event: Omit<NostrEvent, 'id' | 'sig'>): Promise<NostrEvent>;
+    };
+  }
+}
+
 // Import types from global definitions
 type MakeInvoiceRequest = {
   method: 'make_invoice';
@@ -206,7 +215,7 @@ export class NWCClient {
       );
 
       // Create the request event
-      const _event: Omit<NostrEvent, 'id' | 'sig'> = {
+      const event: Omit<NostrEvent, 'id' | 'sig'> = {
         kind: 23194, // NIP-47 request
         pubkey: this.clientPubkey,
         created_at: Math.floor(Date.now() / 1000),
@@ -216,24 +225,95 @@ export class NWCClient {
         content: encryptedContent,
       };
 
-      // This would need to be signed and sent to the relay
-      // For now, we'll simulate a timeout error since we need actual relay integration
-      throw new Error('NWC relay integration required. Please implement relay communication.');
+      // Sign the event
+      const signedEvent = await window.nostr.signEvent(event);
 
-      // TODO: Complete implementation requires:
-      // 1. Sign the event with the client secret
-      // 2. Send it to the relay specified in connection.relayUrl
-      // 3. Listen for the response event (kind 23195)
-      // 4. Decrypt and return the response
+      // Create a WebSocket connection to the relay
+      const ws = new WebSocket(this.connection.relayUrl);
 
+      // Set up a promise to handle the response
+      const responsePromise = new Promise<NWCResponse>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          ws.close();
+          reject(new Error('NWC request timed out'));
+        }, 30000); // 30 second timeout
+
+        ws.onopen = () => {
+          console.log('🔌 NWC WebSocket connected');
+          
+          // Subscribe to response events
+          ws.send(JSON.stringify([
+            'REQ',
+            'nwc-response',
+            {
+              kinds: [23195], // NIP-47 response
+              authors: [this.connection.walletPubkey],
+              since: Math.floor(Date.now() / 1000),
+            }
+          ]));
+
+          // Send the request event
+          ws.send(JSON.stringify(['EVENT', signedEvent]));
+          console.log('📤 NWC request sent:', request.method);
+        };
+
+        ws.onmessage = async (message) => {
+          try {
+            const data = JSON.parse(message.data);
+            
+            // Check if this is a response event (kind 23195)
+            if (data[0] === 'EVENT' && data[2].kind === 23195) {
+              const responseEvent = data[2];
+              
+              // Verify the response is from the wallet
+              if (responseEvent.pubkey !== this.connection.walletPubkey) {
+                console.warn('Received response from unexpected pubkey:', responseEvent.pubkey);
+                return;
+              }
+
+              // Decrypt the response
+              const decryptedContent = await nip04.decrypt(
+                this.connection.secret,
+                this.connection.walletPubkey,
+                responseEvent.content
+              );
+
+              const response = JSON.parse(decryptedContent) as NWCResponse;
+
+              // Check for errors
+              if (response.error) {
+                console.error('NWC error:', response.error);
+                reject(new Error(`NWC error: ${response.error.message}`));
+                return;
+              }
+
+              console.log('📥 NWC response received:', response.result_type);
+              clearTimeout(timeout);
+              ws.close();
+              resolve(response);
+            }
+          } catch (error) {
+            console.error('Error processing NWC response:', error);
+            reject(error);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          clearTimeout(timeout);
+          ws.close();
+          reject(new Error('Failed to connect to relay'));
+        };
+
+        ws.onclose = () => {
+          clearTimeout(timeout);
+        };
+      });
+
+      return await responsePromise;
     } catch (error) {
-      return {
-        result_type: request.method,
-        error: {
-          code: 'INTERNAL',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        },
-      };
+      console.error('NWC request failed:', error);
+      throw error;
     }
   }
 
