@@ -272,19 +272,39 @@ export class NWCService {
 // Utility function to parse NWC connection string
 export function parseNWCConnectionString(connectionString: string): NWCConfig {
   try {
-    const url = new URL(connectionString);
+    // Handle the custom protocol by replacing it temporarily
+    const normalizedUrl = connectionString.replace('nostr+walletconnect://', 'https://');
+    const url = new URL(normalizedUrl);
     
-    if (url.protocol !== 'nostr+walletconnect:') {
-      throw new Error('Invalid NWC connection string protocol');
-    }
-
-    const walletPubkey = url.pathname.replace('//', '');
+    // Extract wallet pubkey from hostname (it's the part after the protocol)
+    const walletPubkey = url.hostname;
     const secret = url.searchParams.get('secret');
     const relayParams = url.searchParams.getAll('relay');
     const lud16 = url.searchParams.get('lud16') || undefined;
 
-    if (!walletPubkey || !secret || relayParams.length === 0) {
-      throw new Error('Missing required parameters in NWC connection string');
+    // Validate wallet pubkey format (should be 64 character hex string)
+    if (!walletPubkey || walletPubkey.length !== 64 || !/^[a-fA-F0-9]{64}$/.test(walletPubkey)) {
+      throw new Error('Invalid wallet pubkey format (must be 64 character hex string)');
+    }
+
+    if (!secret || secret.length !== 64 || !/^[a-fA-F0-9]{64}$/.test(secret)) {
+      throw new Error('Invalid secret format (must be 64 character hex string)');
+    }
+
+    if (relayParams.length === 0) {
+      throw new Error('At least one relay must be specified');
+    }
+
+    // Validate relay URLs
+    for (const relay of relayParams) {
+      try {
+        const relayUrl = new URL(relay);
+        if (!['ws:', 'wss:'].includes(relayUrl.protocol)) {
+          throw new Error(`Invalid relay protocol: ${relayUrl.protocol} (must be ws: or wss:)`);
+        }
+      } catch {
+        throw new Error(`Invalid relay URL: ${relay}`);
+      }
     }
 
     return {
@@ -295,7 +315,10 @@ export function parseNWCConnectionString(connectionString: string): NWCConfig {
       lud16,
     };
   } catch (error) {
-    throw new Error(`Invalid NWC connection string: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`Invalid NWC connection string: ${String(error)}`);
   }
 }
 

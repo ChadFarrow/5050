@@ -104,17 +104,17 @@ export function LightningConfig({ onConfigured }: LightningConfigProps) {
 
       try {
         // Parse and validate the NWC connection string
-        parseNWCConnectionString(nwcConnectionString);
+        const parsed = parseNWCConnectionString(nwcConnectionString);
         
         setConnectionStatus('success');
         toast({
-          title: 'Connection String Valid',
-          description: 'NIP-47 connection string is properly formatted',
+          title: 'Connection String Valid ✅',
+          description: `Successfully parsed NWC connection to ${parsed.relays.length} relay(s)`,
         });
       } catch (error) {
         setConnectionStatus('error');
         toast({
-          title: 'Invalid Connection String',
+          title: 'Invalid Connection String ❌',
           description: error instanceof Error ? error.message : 'Failed to parse NIP-47 connection string',
           variant: 'destructive',
         });
@@ -301,13 +301,18 @@ export function LightningConfig({ onConfigured }: LightningConfigProps) {
                 <Label htmlFor="nwcConnectionString">NIP-47 Connection String *</Label>
                 <Input
                   id="nwcConnectionString"
-                  placeholder="nostr+walletconnect://..."
+                  placeholder="nostr+walletconnect://pubkey?relay=wss://...&secret=..."
                   value={nwcConnectionString}
                   onChange={(e) => setNwcConnectionString(e.target.value)}
                   className="font-mono text-sm"
                 />
-                <div className="text-xs text-muted-foreground">
-                  Paste the connection string from your NIP-47 compatible wallet (Alby, Mutiny, etc.)
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>Paste the connection string from your NIP-47 compatible wallet:</p>
+                  <ul className="list-disc list-inside space-y-0.5 ml-2">
+                    <li><strong>Alby:</strong> Settings → Developer → Nostr Wallet Connect</li>
+                    <li><strong>Mutiny:</strong> Settings → Connections → Nostr Wallet Connect</li>
+                    <li><strong>Others:</strong> Look for "NWC" or "Wallet Connect" in settings</li>
+                  </ul>
                 </div>
               </div>
             ) : (
