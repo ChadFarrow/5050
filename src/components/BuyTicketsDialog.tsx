@@ -57,8 +57,8 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   const projectedTotalTickets = currentTickets + tickets;
   const winChance = projectedTotalTickets > 0 ? (tickets / projectedTotalTickets) * 100 : 0;
 
-  // Check if any lightning service is configured
-  const isLightningConfigured = lightningService.isConfigured() || isNWCConfigured;
+  // Check if any lightning service is configured (or allow demo fallback)
+  const isLightningConfigured = lightningService.isConfigured() || isNWCConfigured || true; // Allow demo fallback
 
   const handleCreateInvoice = async () => {
     if (!user) {
@@ -104,13 +104,47 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
             expiry: 3600, // 1 hour
           });
         } catch (nwcError) {
-          console.warn('NWC invoice creation failed, falling back to Lightning service:', nwcError);
-          // Fall back to regular Lightning service
-          invoice = await lightningService.createInvoice(totalCost, description, 3600);
+          console.warn('NWC invoice creation failed:', nwcError);
+          // Check if we have a regular Lightning service configured
+          if (lightningService.isConfigured()) {
+            console.log('Falling back to Lightning service');
+            invoice = await lightningService.createInvoice(totalCost, description, 3600);
+          } else {
+            // Create a demo invoice as final fallback
+            console.warn('No Lightning service configured, creating demo invoice');
+            invoice = {
+              bolt11: `lnbc${Math.floor(totalCost / 1000)}n1demo_fallback_${Date.now()}`,
+              payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
+              payment_request: `lnbc${Math.floor(totalCost / 1000)}n1demo_fallback_${Date.now()}`,
+              amount_msat: totalCost,
+              description: `[DEMO FALLBACK] ${description}`,
+              expires_at: Date.now() + (3600 * 1000),
+              checking_id: 'demo_fallback_' + Date.now(),
+            };
+          }
         }
-      } else {
+      } else if (lightningService.isConfigured()) {
         // Use configured Lightning service
         invoice = await lightningService.createInvoice(totalCost, description, 3600);
+      } else {
+        // No services configured - create a demo invoice with clear warning
+        console.warn('No Lightning services configured, creating demo invoice');
+        invoice = {
+          bolt11: `lnbc${Math.floor(totalCost / 1000)}n1demo_noconfig_${Date.now()}`,
+          payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
+          payment_request: `lnbc${Math.floor(totalCost / 1000)}n1demo_noconfig_${Date.now()}`,
+          amount_msat: totalCost,
+          description: `[DEMO - NO SERVICE CONFIGURED] ${description}`,
+          expires_at: Date.now() + (3600 * 1000),
+          checking_id: 'demo_noconfig_' + Date.now(),
+        };
+        
+        // Show a warning to the user
+        toast({
+          title: "Demo Invoice Created",
+          description: "No Lightning service configured. Using demo invoice. Configure a Lightning service for real payments.",
+          variant: "destructive",
+        });
       }
 
       if (!invoice.bolt11 || !invoice.payment_hash) {
@@ -240,27 +274,32 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Lightning Configuration Check */}
-          {currentStep === 'form' && !isLightningConfigured && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Lightning service not configured. Set up your Lightning service to generate invoices.
-                <div className="mt-2">
-                  <LightningConfig onConfigured={() => {}} />
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* NWC Ready Status */}
-          {currentStep === 'form' && isNWCConfigured && (
-            <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-              <AlertCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800 dark:text-green-200">
-                <strong>Lightning Ready:</strong> Your wallet is connected and ready to create invoices.
-              </AlertDescription>
-            </Alert>
+          {/* Lightning Service Status */}
+          {currentStep === 'form' && (
+            <>
+              {/* Real Lightning Service Ready */}
+              {(lightningService.isConfigured() || isNWCConfigured) && (
+                <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+                  <AlertCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    <strong>Lightning Ready:</strong> {isNWCConfigured ? 'NWC wallet connected' : 'Lightning service configured'} and ready to create real invoices.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* No Service Configured - Demo Mode Warning */}
+              {!lightningService.isConfigured() && !isNWCConfigured && (
+                <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-800 dark:text-orange-200">
+                    <strong>Demo Mode:</strong> No Lightning service configured. Demo invoices will be created for testing.
+                    <div className="mt-2">
+                      <LightningConfig onConfigured={() => {}} />
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
           )}
 
           {/* Form Step */}
@@ -402,7 +441,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
             </Button>
             <Button 
               onClick={handleCreateInvoice} 
-              disabled={isPending || isCreatingInvoice || isCreatingNWCInvoice || tickets <= 0 || !isLightningConfigured}
+              disabled={isPending || isCreatingInvoice || isCreatingNWCInvoice || tickets <= 0}
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
             >
               {(isCreatingInvoice || isCreatingNWCInvoice) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

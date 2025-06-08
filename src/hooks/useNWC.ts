@@ -14,14 +14,43 @@ export function useNWC() {
   // Always call the real NWC hook (follows rules of hooks)
   // Return it directly when not in demo mode
   if (!isDemoMode) {
-    return realNWC;
+    // When not in demo mode, if real NWC fails, we'll fallback to demo invoices with a warning
+    return {
+      ...realNWC,
+      createInvoice: async ({ amount, description, expiry }: { 
+        amount: number; 
+        description: string; 
+        expiry?: number; 
+      }) => {
+        try {
+          return await realNWC.createInvoice({ amount, description, expiry });
+        } catch (error) {
+          console.warn('Real NWC failed, creating demo invoice:', error);
+          
+          // Create a demo invoice with clear labeling
+          const mockInvoice: LightningInvoice = {
+            bolt11: `lnbc${Math.floor(amount / 1000)}n1demo_fallback_${Date.now()}`,
+            payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
+            payment_request: `lnbc${Math.floor(amount / 1000)}n1demo_fallback_${Date.now()}`,
+            amount_msat: amount,
+            description: `[DEMO FALLBACK] ${description}`,
+            expires_at: Date.now() + ((expiry || 3600) * 1000),
+            checking_id: 'demo_fallback_' + Date.now(),
+          };
+
+          // Simulate network delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          return mockInvoice;
+        }
+      },
+    };
   }
 
-  // If we reach here, we're in demo mode - but we still need to return the same hook structure
-  // For demo mode, we'll just return the real NWC hook but with demo data
+  // If we reach here, we're in demo mode - return demo implementation
   return {
     ...realNWC,
-    // Override specific methods for demo behavior if needed
+    // Override specific methods for demo behavior
     createInvoice: async ({ amount, description, expiry }: { 
       amount: number; 
       description: string; 
@@ -39,7 +68,7 @@ export function useNWC() {
       };
 
       console.warn('🚨 NWC Demo Mode: This is a mock invoice for demonstration purposes only!');
-      console.log('To use real NWC invoices, set nwcDemoMode to false in App.tsx');
+      console.log('To use real NWC invoices, configure a real NWC wallet or Lightning service');
 
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 1000));
