@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useAppContext } from '@/hooks/useAppContext';
 import { type NWCConfig, type LightningInvoice } from '@/lib/lightning';
 
 // Note: These interfaces would be used in a full NWC implementation
@@ -23,6 +24,7 @@ interface _NWCResponse {
 export function useNWC() {
   const { nostr: _nostr } = useNostr();
   const { user } = useCurrentUser();
+  const { config } = useAppContext();
   const [nwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
   const [isConfigured, setIsConfigured] = useState(false);
 
@@ -30,8 +32,8 @@ export function useNWC() {
     setIsConfigured(!!nwcConfig && !!user?.signer);
   }, [nwcConfig, user]);
 
-  // Note: This is a demo implementation
-  // In production, this would implement the full NWC protocol with proper encryption
+  // Check if we're in demo mode or real mode
+  const isDemoMode = config.nwcDemoMode;
 
   // Query wallet info (demo version)
   const { data: walletInfo, isLoading: isLoadingInfo } = useQuery({
@@ -83,16 +85,21 @@ export function useNWC() {
         throw new Error('NWC not configured');
       }
 
-      // Create a demo invoice that looks real but is just for demonstration
+      // Create a demo invoice that clearly indicates it's for demonstration
       const mockInvoice: LightningInvoice = {
-        bolt11: 'lnbc' + Math.floor(amount / 1000) + 'n1' + 'demo_invoice_' + Date.now(),
+        bolt11: `lnbc${Math.floor(amount / 1000)}n1demo_invoice_${Date.now()}`,
         payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
-        payment_request: 'lnbc' + Math.floor(amount / 1000) + 'n1' + 'demo_invoice_' + Date.now(),
+        payment_request: `lnbc${Math.floor(amount / 1000)}n1demo_invoice_${Date.now()}`,
         amount_msat: amount,
-        description: description,
+        description: `[DEMO] ${description}`,
         expires_at: Date.now() + ((expiry || 3600) * 1000),
         checking_id: 'demo_' + Date.now(),
       };
+
+      if (isDemoMode) {
+        console.warn('🚨 NWC Demo Mode: This is a mock invoice for demonstration purposes only!');
+        console.log('To use real NWC invoices, set nwcDemoMode to false in App.tsx and implement the full NIP-47 protocol.');
+      }
 
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 1000));

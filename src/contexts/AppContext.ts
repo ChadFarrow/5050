@@ -7,6 +7,8 @@ export interface AppConfig {
   theme: Theme;
   /** Selected relay URL */
   relayUrl: string;
+  /** Whether NWC is in demo mode (true) or real mode (false) */
+  nwcDemoMode: boolean;
 }
 
 export interface AppContextType {

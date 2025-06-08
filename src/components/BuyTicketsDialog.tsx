@@ -229,6 +229,17 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
             </Alert>
           )}
 
+          {/* NWC Demo Warning */}
+          {currentStep === 'form' && isNWCConfigured && (
+            <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-800 dark:text-orange-200">
+                <strong>Demo Mode:</strong> NWC is configured but will generate demo invoices for testing. 
+                In production, this would create real Lightning invoices through your connected wallet.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Form Step */}
           {currentStep === 'form' && (
             <>
