@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNostr } from '@nostrify/react';
 import type { NostrEvent } from '@nostrify/nostrify';
 
-export interface Campaign {
+export interface Fundraiser {
   id: string;
   pubkey: string;
   dTag: string;
@@ -21,7 +21,10 @@ export interface Campaign {
   event: NostrEvent;
 }
 
-function validateCampaignEvent(event: NostrEvent): boolean {
+// Keep Campaign as an alias for backward compatibility
+export type Campaign = Fundraiser;
+
+function validateFundraiserEvent(event: NostrEvent): boolean {
   if (event.kind !== 31950) return false;
 
   const requiredTags = ['d', 'title', 'description', 'target', 'ticket_price', 'end_date', 'podcast'];
@@ -41,7 +44,7 @@ function validateCampaignEvent(event: NostrEvent): boolean {
   return true;
 }
 
-function eventToCampaign(event: NostrEvent): Campaign {
+function eventToFundraiser(event: NostrEvent): Fundraiser {
   const tags = new Map(event.tags.map(([name, value]) => [name, value]));
   const now = Math.floor(Date.now() / 1000);
   const endDate = parseInt(tags.get('end_date') || '0');
@@ -66,11 +69,11 @@ function eventToCampaign(event: NostrEvent): Campaign {
   };
 }
 
-export function useCampaigns() {
+export function useFundraisers() {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['campaigns'],
+    queryKey: ['fundraisers'],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
       
@@ -80,22 +83,22 @@ export function useCampaigns() {
       );
 
       // Filter and transform events
-      const validEvents = events.filter(validateCampaignEvent);
-      const campaigns = validEvents.map(eventToCampaign);
+      const validEvents = events.filter(validateFundraiserEvent);
+      const fundraisers = validEvents.map(eventToFundraiser);
 
       // Sort by creation date, newest first
-      return campaigns.sort((a, b) => b.createdAt - a.createdAt);
+      return fundraisers.sort((a, b) => b.createdAt - a.createdAt);
     },
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // 1 minute
   });
 }
 
-export function useCampaign(pubkey: string, dTag: string) {
+export function useFundraiser(pubkey: string, dTag: string) {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['campaign', pubkey, dTag],
+    queryKey: ['fundraiser', pubkey, dTag],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(3000)]);
       
@@ -110,13 +113,17 @@ export function useCampaign(pubkey: string, dTag: string) {
       );
 
       const event = events[0];
-      if (!event || !validateCampaignEvent(event)) {
+      if (!event || !validateFundraiserEvent(event)) {
         return null;
       }
 
-      return eventToCampaign(event);
+      return eventToFundraiser(event);
     },
     enabled: !!pubkey && !!dTag,
     staleTime: 30000,
   });
 }
+
+// Keep old function names for backward compatibility
+export const useCampaigns = useFundraisers;
+export const useCampaign = useFundraiser;

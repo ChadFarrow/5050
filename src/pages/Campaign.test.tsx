@@ -6,11 +6,11 @@ import type { NostrEvent } from '@nostrify/nostrify';
 
 // Mock the hooks
 vi.mock('@/hooks/useCampaigns', () => ({
-  useCampaign: () => ({
+  useFundraiser: () => ({
     data: {
       pubkey: 'test-pubkey',
       dTag: 'test-dtag',
-      title: 'Test Campaign',
+      title: 'Test Fundraiser',
       description: 'Test Description',
       podcast: 'Test Podcast',
       target: 1000000,
@@ -102,7 +102,7 @@ describe('Campaign', () => {
 
     // Check that the participants section is rendered
     expect(screen.getByText('All Participants (3)')).toBeInTheDocument();
-    expect(screen.getByText('Everyone who bought tickets for this campaign')).toBeInTheDocument();
+    expect(screen.getByText('Everyone who bought tickets for this fundraiser')).toBeInTheDocument();
 
     // Check that participants are displayed with correct ticket counts
     // Alice should have 35 tickets total (20 + 15 from two purchases)

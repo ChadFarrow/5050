@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoginArea } from "@/components/auth/LoginArea";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useCampaigns } from "@/hooks/useCampaigns";
+import { useFundraisers } from "@/hooks/useCampaigns";
 import { CampaignCard } from "@/components/CampaignCard";
 import { CreateCampaignDialog } from "@/components/CreateCampaignDialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,10 +16,10 @@ import { RelaySelector } from "@/components/RelaySelector";
 const Index = () => {
   const { user } = useCurrentUser();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const { data: campaigns, isLoading } = useCampaigns();
+  const { data: fundraisers, isLoading } = useFundraisers();
 
-  const activeCampaigns = campaigns?.filter(c => c.isActive) || [];
-  const endedCampaigns = campaigns?.filter(c => !c.isActive) || [];
+  const activeFundraisers = fundraisers?.filter(f => f.isActive) || [];
+  const endedFundraisers = fundraisers?.filter(f => !f.isActive) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -128,20 +128,20 @@ const Index = () => {
           <Tabs defaultValue="active" className="w-full">
             <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-6 sm:mb-8">
               <TabsTrigger value="active" className="text-xs sm:text-sm">
-                <span className="hidden sm:inline">Active Campaigns</span>
+                <span className="hidden sm:inline">Active Fundraisers</span>
                 <span className="sm:hidden">Active</span>
-                {activeCampaigns.length > 0 && (
+                {activeFundraisers.length > 0 && (
                   <Badge variant="secondary" className="ml-1 sm:ml-2 text-xs">
-                    {activeCampaigns.length}
+                    {activeFundraisers.length}
                   </Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="ended" className="text-xs sm:text-sm">
                 <span className="hidden sm:inline">Completed</span>
                 <span className="sm:hidden">Done</span>
-                {endedCampaigns.length > 0 && (
+                {endedFundraisers.length > 0 && (
                   <Badge variant="outline" className="ml-1 sm:ml-2 text-xs">
-                    {endedCampaigns.length}
+                    {endedFundraisers.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -168,10 +168,10 @@ const Index = () => {
                     </Card>
                   ))}
                 </div>
-              ) : activeCampaigns.length > 0 ? (
+              ) : activeFundraisers.length > 0 ? (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {activeCampaigns.map((campaign) => (
-                    <CampaignCard key={campaign.id} campaign={campaign} />
+                  {activeFundraisers.map((fundraiser) => (
+                    <CampaignCard key={fundraiser.id} fundraiser={fundraiser} />
                   ))}
                 </div>
               ) : (
@@ -181,9 +181,9 @@ const Index = () => {
                       <div className="max-w-sm mx-auto space-y-6">
                         <Trophy className="h-16 w-16 mx-auto text-muted-foreground" />
                         <div>
-                          <h3 className="text-lg font-semibold mb-2">No Active Campaigns</h3>
+                          <h3 className="text-lg font-semibold mb-2">No Active Fundraisers</h3>
                           <p className="text-muted-foreground">
-                            No fundraisers are currently running. Try switching relays to discover more campaigns.
+                            No fundraisers are currently running. Try switching relays to discover more fundraisers.
                           </p>
                         </div>
                         <RelaySelector className="w-full" />
@@ -214,10 +214,10 @@ const Index = () => {
                     </Card>
                   ))}
                 </div>
-              ) : endedCampaigns.length > 0 ? (
+              ) : endedFundraisers.length > 0 ? (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {endedCampaigns.map((campaign) => (
-                    <CampaignCard key={campaign.id} campaign={campaign} />
+                  {endedFundraisers.map((fundraiser) => (
+                    <CampaignCard key={fundraiser.id} fundraiser={fundraiser} />
                   ))}
                 </div>
               ) : (
@@ -227,7 +227,7 @@ const Index = () => {
                       <div className="max-w-sm mx-auto space-y-6">
                         <Trophy className="h-16 w-16 mx-auto text-muted-foreground" />
                         <div>
-                          <h3 className="text-lg font-semibold mb-2">No Completed Campaigns</h3>
+                          <h3 className="text-lg font-semibold mb-2">No Completed Fundraisers</h3>
                           <p className="text-muted-foreground">
                             No fundraisers have been completed yet. Try another relay?
                           </p>
@@ -268,7 +268,7 @@ const Index = () => {
             <div>
               <h4 className="font-semibold mb-3">How It Works</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Podcasters create fundraiser campaigns</li>
+                <li>• Podcasters create fundraisers</li>
                 <li>• Listeners buy raffle tickets with Lightning</li>
                 <li>• 50% goes to winner, 50% to creator</li>
                 <li>• All transactions verified on Nostr</li>

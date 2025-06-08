@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { ArrowLeft, Trophy, Users, Ticket, ExternalLink } from "lucide-react";
+import { ArrowLeft, Trophy, Users, Ticket, ExternalLink, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useCampaign } from "@/hooks/useCampaigns";
+import { useFundraiser } from "@/hooks/useCampaigns";
 import { useCampaignStats, useUserTickets, type TicketPurchase } from "@/hooks/useCampaignStats";
 import { useAuthor } from "@/hooks/useAuthor";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
@@ -22,28 +22,32 @@ export default function Campaign() {
   const { user } = useCurrentUser();
   const [showBuyDialog, setShowBuyDialog] = useState(false);
 
-  const { data: campaign, isLoading: campaignLoading } = useCampaign(pubkey || "", dTag || "");
+  const { data: fundraiser, isLoading: fundraiserLoading } = useFundraiser(pubkey || "", dTag || "");
   const { data: stats } = useCampaignStats(pubkey || "", dTag || "");
   const { data: userTickets } = useUserTickets(pubkey || "", dTag || "", user?.pubkey);
-  const author = useAuthor(campaign?.pubkey || "");
+  const author = useAuthor(fundraiser?.pubkey || "");
+  
+  // Get winner information
+  const winner = stats?.result;
+  const winnerAuthor = useAuthor(winner?.winnerPubkey || "");
 
-  if (campaignLoading) {
-    return <CampaignSkeleton />;
+  if (fundraiserLoading) {
+    return <FundraiserSkeleton />;
   }
 
-  if (!campaign) {
+  if (!fundraiser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-2xl font-bold mb-4">Campaign Not Found</h1>
+            <h1 className="text-2xl font-bold mb-4">Fundraiser Not Found</h1>
             <p className="text-muted-foreground mb-6">
-              The campaign you're looking for doesn't exist or couldn't be loaded.
+              The fundraiser you're looking for doesn't exist or couldn't be loaded.
             </p>
             <Button asChild>
               <Link to="/">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Campaigns
+                Back to Fundraisers
               </Link>
             </Button>
           </div>
@@ -53,15 +57,15 @@ export default function Campaign() {
   }
 
   const metadata = author.data?.metadata;
-  const displayName = metadata?.name ?? genUserName(campaign.pubkey);
+  const displayName = metadata?.name ?? genUserName(fundraiser.pubkey);
   const profileImage = metadata?.picture;
 
   const now = Math.floor(Date.now() / 1000);
-  const timeRemaining = campaign.endDate - now;
+  const timeRemaining = fundraiser.endDate - now;
 
   const totalRaised = stats?.totalRaised || 0;
   const totalTickets = stats?.totalTickets || 0;
-  const progressPercent = campaign.target > 0 ? Math.min((totalRaised / campaign.target) * 100, 100) : 0;
+  const progressPercent = fundraiser.target > 0 ? Math.min((totalRaised / fundraiser.target) * 100, 100) : 0;
 
   const potentialWinnings = Math.floor(totalRaised / 2);
   const creatorShare = totalRaised - potentialWinnings;
@@ -78,7 +82,7 @@ export default function Campaign() {
             <Button variant="ghost" asChild className="mb-4" size="sm">
               <Link to="/">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Back to Campaigns</span>
+                <span className="hidden sm:inline">Back to Fundraisers</span>
                 <span className="sm:hidden">Back</span>
               </Link>
             </Button>
@@ -90,16 +94,21 @@ export default function Campaign() {
                   <AvatarFallback className="text-sm sm:text-lg">{displayName[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 leading-tight">{campaign.title}</h1>
-                  <p className="text-base sm:text-lg text-muted-foreground truncate">{campaign.podcast}</p>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 leading-tight">{fundraiser.title}</h1>
+                  <p className="text-base sm:text-lg text-muted-foreground truncate">{fundraiser.podcast}</p>
                   <p className="text-sm text-muted-foreground">by {displayName}</p>
                 </div>
               </div>
               
               <div className="flex items-center space-x-2 flex-shrink-0">
-                {campaign.isActive ? (
+                {fundraiser.isActive ? (
                   <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                     Active
+                  </Badge>
+                ) : winner ? (
+                  <Badge variant="default" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Winner Drawn
                   </Badge>
                 ) : (
                   <Badge variant="secondary">Ended</Badge>
@@ -111,27 +120,68 @@ export default function Campaign() {
           <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-              {/* Campaign Image */}
-              {campaign.image && (
+              {/* Fundraiser Image */}
+              {fundraiser.image && (
                 <div className="aspect-video rounded-lg overflow-hidden bg-muted">
                   <img 
-                    src={campaign.image} 
-                    alt={campaign.title}
+                    src={fundraiser.image} 
+                    alt={fundraiser.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
               )}
 
+              {/* Winner Display */}
+              {winner && (
+                <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-purple-800 dark:text-purple-200">
+                      <Crown className="h-5 w-5 mr-2" />
+                      Winner Announced!
+                    </CardTitle>
+                    <CardDescription>
+                      The fundraiser has ended and a winner has been selected.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center space-x-4 p-4 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={winnerAuthor.data?.metadata?.picture} />
+                        <AvatarFallback className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                          {(winnerAuthor.data?.metadata?.name ?? genUserName(winner.winnerPubkey))[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-semibold text-lg">
+                          {winnerAuthor.data?.metadata?.name ?? genUserName(winner.winnerPubkey)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Won with ticket #{winner.winningTicket}
+                        </p>
+                        <p className="text-lg font-bold text-green-600">
+                          Prize: {formatSats(winner.winnerAmount)}
+                        </p>
+                      </div>
+                    </div>
+                    {winner.message && (
+                      <div className="mt-4 p-3 bg-white/30 dark:bg-gray-800/30 rounded-lg">
+                        <p className="text-sm italic">"{winner.message}"</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Description */}
               <Card>
                 <CardHeader>
-                  <CardTitle>About This Campaign</CardTitle>
-                  <CardDescription>{campaign.description}</CardDescription>
+                  <CardTitle>About This Fundraiser</CardTitle>
+                  <CardDescription>{fundraiser.description}</CardDescription>
                 </CardHeader>
-                {campaign.content && (
+                {fundraiser.content && (
                   <CardContent>
                     <div className="whitespace-pre-wrap text-sm">
-                      {campaign.content}
+                      {fundraiser.content}
                     </div>
                   </CardContent>
                 )}
@@ -178,7 +228,7 @@ export default function Campaign() {
                       All Participants ({stats.uniqueParticipants})
                     </CardTitle>
                     <CardDescription>
-                      Everyone who bought tickets for this campaign
+                      Everyone who bought tickets for this fundraiser
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -190,12 +240,12 @@ export default function Campaign() {
 
             {/* Sidebar */}
             <div className="space-y-4 sm:space-y-6">
-              {/* Campaign Stats */}
+              {/* Fundraiser Stats */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Trophy className="h-5 w-5 mr-2" />
-                    Campaign Stats
+                    Fundraiser Stats
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -203,7 +253,7 @@ export default function Campaign() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Progress</span>
-                      <span>{formatSats(totalRaised)} / {formatSats(campaign.target)}</span>
+                      <span>{formatSats(totalRaised)} / {formatSats(fundraiser.target)}</span>
                     </div>
                     <Progress value={progressPercent} className="h-3" />
                   </div>
@@ -230,14 +280,14 @@ export default function Campaign() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Ticket Price</span>
-                      <span className="font-semibold">{formatSats(campaign.ticketPrice)}</span>
+                      <span className="font-semibold">{formatSats(fundraiser.ticketPrice)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">
-                        {campaign.isActive ? "Time Remaining" : "Ended"}
+                        {fundraiser.isActive ? "Time Remaining" : "Ended"}
                       </span>
                       <span className="font-semibold">
-                        {campaign.isActive ? formatTimeRemaining(timeRemaining) : "Complete"}
+                        {fundraiser.isActive ? formatTimeRemaining(timeRemaining) : "Complete"}
                       </span>
                     </div>
                   </div>
@@ -245,7 +295,7 @@ export default function Campaign() {
                   <Separator />
 
                   {/* Action Button */}
-                  {campaign.isActive && user ? (
+                  {fundraiser.isActive && user ? (
                     <Button 
                       onClick={() => setShowBuyDialog(true)}
                       className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
@@ -259,39 +309,39 @@ export default function Campaign() {
                     </Button>
                   ) : (
                     <Button variant="outline" className="w-full" disabled>
-                      Campaign Ended
+                      Fundraiser Ended
                     </Button>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Campaign Details */}
+              {/* Fundraiser Details */}
               <Card>
                 <CardHeader>
                   <CardTitle>Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
-                  {campaign.episode && (
+                  {fundraiser.episode && (
                     <div>
                       <span className="text-muted-foreground">Episode:</span>
-                      <p className="font-medium">{campaign.episode}</p>
+                      <p className="font-medium">{fundraiser.episode}</p>
                     </div>
                   )}
                   <div>
                     <span className="text-muted-foreground">Created:</span>
                     <p className="font-medium">
-                      {new Date(campaign.createdAt * 1000).toLocaleDateString()}
+                      {new Date(fundraiser.createdAt * 1000).toLocaleDateString()}
                     </p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Ends:</span>
                     <p className="font-medium">
-                      {new Date(campaign.endDate * 1000).toLocaleDateString()}
+                      {new Date(fundraiser.endDate * 1000).toLocaleDateString()}
                     </p>
                   </div>
-                  {campaign.podcastUrl && (
+                  {fundraiser.podcastUrl && (
                     <Button variant="outline" size="sm" className="w-full" asChild>
-                      <a href={campaign.podcastUrl} target="_blank" rel="noopener noreferrer">
+                      <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Visit Podcast
                       </a>
@@ -305,7 +355,7 @@ export default function Campaign() {
       </div>
 
       <BuyTicketsDialog 
-        campaign={campaign}
+        campaign={fundraiser}
         open={showBuyDialog}
         onOpenChange={setShowBuyDialog}
       />
@@ -401,7 +451,7 @@ function ParticipantRow({
   );
 }
 
-function CampaignSkeleton() {
+function FundraiserSkeleton() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="container mx-auto px-4 py-8">

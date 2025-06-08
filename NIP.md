@@ -6,26 +6,26 @@ This NIP defines event kinds for creating and managing 50/50 style fundraisers f
 
 ## Event Kinds
 
-### Kind 31950: Fundraiser Campaign
+### Kind 31950: Fundraiser
 
-A fundraiser campaign is an addressable event that defines a 50/50 raffle for a podcaster.
+A fundraiser is an addressable event that defines a 50/50 raffle for a podcaster.
 
 **Required tags:**
-- `d` - unique identifier for the campaign
-- `title` - campaign title
-- `description` - campaign description
+- `d` - unique identifier for the fundraiser
+- `title` - fundraiser title
+- `description` - fundraiser description
 - `target` - target amount in millisats (string)
 - `ticket_price` - price per ticket in millisats (string)
-- `end_date` - unix timestamp when campaign ends (string)
+- `end_date` - unix timestamp when fundraiser ends (string)
 - `podcast` - podcast name or identifier
 
 **Optional tags:**
-- `image` - campaign image URL
+- `image` - fundraiser image URL
 - `podcast_url` - podcast website or RSS feed URL
 - `episode` - specific episode this fundraiser is for
-- `duration` - campaign duration in seconds (alternative to calculating from creation time and end_date)
+- `duration` - fundraiser duration in seconds (alternative to calculating from creation time and end_date)
 
-**Content:** Additional campaign details in plaintext
+**Content:** Additional fundraiser details in plaintext
 
 Example:
 ```json
@@ -52,11 +52,11 @@ Example:
 
 ### Kind 31951: Ticket Purchase
 
-A ticket purchase event represents a participant buying tickets for a fundraiser campaign.
+A ticket purchase event represents a participant buying tickets for a fundraiser.
 
 **Required tags:**
 - `d` - unique identifier for this purchase
-- `a` - campaign coordinate (kind:pubkey:d-tag)
+- `a` - fundraiser coordinate (kind:pubkey:d-tag)
 - `amount` - total amount paid in millisats (string)
 - `tickets` - number of tickets purchased (string)
 - `bolt11` - lightning invoice that was paid
@@ -88,13 +88,13 @@ Example:
 }
 ```
 
-### Kind 31952: Campaign Result
+### Kind 31952: Fundraiser Result
 
-A campaign result event is published by the campaign creator when the fundraiser ends, declaring the winner and final amounts.
+A fundraiser result event is published by the fundraiser creator when the fundraiser ends, declaring the winner and final amounts.
 
 **Required tags:**
-- `d` - same as the original campaign d-tag
-- `a` - campaign coordinate (kind:pubkey:d-tag)
+- `d` - same as the original fundraiser d-tag
+- `a` - fundraiser coordinate (kind:pubkey:d-tag)
 - `winner` - pubkey of the winning participant
 - `winning_ticket` - the winning ticket number (string)
 - `total_raised` - total amount raised in millisats (string)
@@ -106,7 +106,7 @@ A campaign result event is published by the campaign creator when the fundraiser
 - `winner_payment` - lightning payment details for winner payout
 - `random_seed` - seed used for random number generation (for transparency)
 
-**Content:** Message about the campaign results
+**Content:** Message about the fundraiser results
 
 Example:
 ```json
@@ -136,12 +136,12 @@ Example:
 1. **Payment Integration**: Ticket purchases should integrate with NIP-57 Lightning Zaps for payments
 2. **Fairness**: Random number generation for winner selection should be transparent and verifiable
 3. **Validation**: Clients should validate that ticket purchases have corresponding valid lightning payments
-4. **Campaign States**: Campaigns can be in states: active, ended, or cancelled
-5. **Ticket Numbering**: Tickets should be numbered sequentially starting from 1 for each campaign
+4. **Fundraiser States**: Fundraisers can be in states: active, ended, or cancelled
+5. **Ticket Numbering**: Tickets should be numbered sequentially starting from 1 for each fundraiser
 
 ## Security Considerations
 
 - Verify lightning payments before counting ticket purchases
 - Use cryptographically secure random number generation for winner selection
 - Consider implementing dispute resolution mechanisms
-- Validate campaign end dates and prevent manipulation
+- Validate fundraiser end dates and prevent manipulation

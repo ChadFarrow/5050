@@ -15,12 +15,12 @@ import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 
-interface CreateCampaignDialogProps {
+interface CreateFundraiserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-interface CampaignForm {
+interface FundraiserForm {
   title: string;
   description: string;
   content: string;
@@ -36,7 +36,7 @@ interface CampaignForm {
   image: string;
 }
 
-const initialForm: CampaignForm = {
+const initialForm: FundraiserForm = {
   title: "",
   description: "",
   content: "",
@@ -52,13 +52,13 @@ const initialForm: CampaignForm = {
   image: "",
 };
 
-export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialogProps) {
+export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const { toast } = useToast();
-  const [form, setForm] = useState<CampaignForm>(initialForm);
+  const [form, setForm] = useState<FundraiserForm>(initialForm);
 
-  const updateForm = (field: keyof CampaignForm, value: string | Date | undefined | boolean) => {
+  const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
@@ -108,7 +108,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
     if (!user) {
       toast({
         title: "Error",
-        description: "You must be logged in to create a campaign",
+        description: "You must be logged in to create a fundraiser",
         variant: "destructive",
       });
       return;
@@ -126,7 +126,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
 
     try {
       // Generate unique identifier
-      const dTag = `campaign-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const dTag = `fundraiser-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Convert amounts to millisats
       const targetSats = parseInt(form.target);
@@ -173,8 +173,8 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
       });
 
       toast({
-        title: "Campaign Created!",
-        description: "Your fundraiser campaign has been published to Nostr",
+        title: "Fundraiser Created!",
+        description: "Your fundraiser has been published to Nostr",
       });
 
       // Reset form and close dialog
@@ -184,7 +184,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
       console.error("Error creating campaign:", error);
       toast({
         title: "Error",
-        description: "Failed to create campaign. Please try again.",
+        description: "Failed to create fundraiser. Please try again.",
         variant: "destructive",
       });
     }
@@ -201,7 +201,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Fundraiser Campaign</DialogTitle>
+          <DialogTitle>Create Fundraiser</DialogTitle>
           <DialogDescription>
             Set up a 50/50 raffle to raise funds for your podcast. Half goes to the winner, half supports your show.
           </DialogDescription>
@@ -211,7 +211,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
           {/* Basic Info */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Campaign Title *</Label>
+              <Label htmlFor="title">Fundraiser Title *</Label>
               <Input
                 id="title"
                 placeholder="e.g., Weekly Show Fundraiser"
@@ -225,7 +225,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
               <Label htmlFor="description">Short Description *</Label>
               <Input
                 id="description"
-                placeholder="Brief description for the campaign card"
+                placeholder="Brief description for the fundraiser card"
                 value={form.description}
                 onChange={(e) => updateForm("description", e.target.value)}
                 disabled={isPending}
@@ -236,7 +236,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
               <Label htmlFor="content">Detailed Description</Label>
               <Textarea
                 id="content"
-                placeholder="Tell supporters more about your campaign and how the funds will be used..."
+                placeholder="Tell supporters more about your fundraiser and how the funds will be used..."
                 value={form.content}
                 onChange={(e) => updateForm("content", e.target.value)}
                 disabled={isPending}
@@ -285,9 +285,9 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
             </div>
           </div>
 
-          {/* Campaign Settings */}
+          {/* Fundraiser Settings */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Campaign Settings</h3>
+            <h3 className="text-lg font-semibold">Fundraiser Settings</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -328,7 +328,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
 
               {form.useDuration ? (
                 <div className="space-y-2">
-                  <Label>Campaign Duration *</Label>
+                  <Label>Fundraiser Duration *</Label>
                   <div className="flex space-x-2">
                     <Input
                       type="number"
@@ -358,7 +358,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
                   {form.durationValue && parseInt(form.durationValue) > 0 && (
                     <p className="text-sm text-muted-foreground">
                       <Clock className="inline h-3 w-3 mr-1" />
-                      Campaign will end: {format(getEndDateFromDuration(), "PPP 'at' p")}
+                      Fundraiser will end: {format(getEndDateFromDuration(), "PPP 'at' p")}
                     </p>
                   )}
                 </div>
@@ -394,7 +394,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="image">Campaign Image URL (optional)</Label>
+              <Label htmlFor="image">Fundraiser Image URL (optional)</Label>
               <div className="flex space-x-2">
                 <Input
                   id="image"
@@ -413,7 +413,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
           {/* Preview */}
           {form.target && form.ticketPrice && (
             <div className="bg-muted p-4 rounded-lg space-y-2">
-              <h4 className="font-semibold">Campaign Preview</h4>
+              <h4 className="font-semibold">Fundraiser Preview</h4>
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>Target: {parseInt(form.target || "0").toLocaleString()} sats</p>
                 <p>Ticket Price: {parseInt(form.ticketPrice || "0").toLocaleString()} sats</p>
@@ -430,7 +430,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
           </Button>
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Campaign
+            Create Fundraiser
           </Button>
         </div>
       </DialogContent>
