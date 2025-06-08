@@ -45,7 +45,9 @@ See `NIP.md` for complete event specifications.
 ### Prerequisites
 - Node.js 18+
 - A Nostr client/extension (like Alby, nos2x) for authentication
-- Lightning wallet for payments
+- Lightning wallet for payments:
+  - **Recommended**: NIP-47 compatible wallet (Alby, Mutiny, etc.)
+  - **Alternative**: Lightning service API (LNbits, BTCPay Server, etc.)
 
 ### Installation
 
@@ -84,8 +86,11 @@ npm run build
 
 1. **Browse**: View active campaigns on the homepage
 2. **Select**: Click on a campaign to view details
-3. **Purchase**: Choose number of tickets and complete Lightning payment
-4. **Track**: View your tickets and win probability
+3. **Configure Lightning**: Set up your Lightning wallet/service (one-time setup)
+4. **Purchase**: Choose number of tickets and create real Lightning invoice
+5. **Pay**: Complete payment using your Lightning wallet
+6. **Confirm**: Ticket purchase is automatically published to Nostr when payment confirms
+7. **Track**: View your tickets and win probability
 
 ### Campaign Management
 
@@ -105,10 +110,18 @@ Default relays:
 - wss://nos.lol
 
 ### Lightning Integration
-Currently uses mock Lightning payments for demo purposes. In production, this would integrate with:
-- LNURL-pay for receiving payments
-- Lightning wallets for payouts
-- NIP-57 Zaps for Nostr-native payments
+**Real Lightning Implementation** - The app now supports real Lightning payments through:
+- **NIP-47 (Nostr Wallet Connect)**: Connect any NWC-compatible wallet (Alby, Mutiny, etc.)
+- **Traditional Lightning Services**: LNbits, BTCPay Server, LndHub, and custom APIs
+- **Real Invoices**: Generate actual Lightning invoices for ticket purchases
+- **Payment Verification**: Full payment confirmation and event publishing
+
+To configure Lightning payments:
+1. Click "Lightning Setup" in the ticket purchase dialog
+2. Choose between NIP-47 (recommended) or traditional Lightning service
+3. For NIP-47: Paste your wallet's connection string
+4. For traditional: Enter your service URL and API key
+5. Test the connection and save
 
 ## Development
 

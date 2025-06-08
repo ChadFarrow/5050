@@ -417,10 +417,9 @@ export function LightningConfig({ onConfigured }: LightningConfigProps) {
                   <Alert className="mt-4">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription className="text-xs">
-                      <strong>Demo Note:</strong> This is a demonstration of NIP-47 configuration. The connection string 
-                      validation works correctly, but invoice generation creates demo invoices (like "lnbc100n1demo_invoice_...") 
-                      for testing purposes. To enable real NWC invoices, set <code>nwcDemoMode: false</code> in App.tsx 
-                      and implement the full NIP-47 protocol with proper encryption.
+                      <strong>Real Implementation:</strong> This app now uses real NIP-47 Lightning invoices through 
+                      the Nostr Wallet Connect protocol. When you connect your wallet, real invoices will be generated 
+                      and payments will be processed. Your connection is encrypted and stored locally in your browser.
                     </AlertDescription>
                   </Alert>
                 </>

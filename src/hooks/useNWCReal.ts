@@ -22,7 +22,7 @@ interface NWCResponse {
 
 // This would be a real NWC implementation
 export function useNWCReal() {
-  const { nostr: _nostr } = useNostr();
+  const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const [nwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
   const [isConfigured, setIsConfigured] = useState(false);
@@ -56,7 +56,7 @@ export function useNWCReal() {
 
     // Encrypt the request content using NIP-04
     const encryptedContent = await nip04.encrypt(
-      secretKey,
+      nwcConfig.secret,
       nwcConfig.walletPubkey,
       JSON.stringify(request)
     );
@@ -72,33 +72,92 @@ export function useNWCReal() {
       pubkey: clientPubkey,
     };
 
-    // Sign the event with the secret key
-    const _signedEvent = await user.signer.signEvent(requestEvent);
+    // Sign the event with user's signer
+    const signedEvent = await user.signer.signEvent(requestEvent);
 
-    // Note: This is a placeholder for the real implementation
-    // The actual implementation would need to:
-    // 1. Publish the signed event to the configured relays
-    // 2. Listen for response events (kind 23195)
-    // 3. Decrypt and return the response
-    
-    // For now, throw an error indicating this needs proper implementation
-    throw new Error('Real NWC implementation requires proper Nostr event publishing and subscription handling. This is a placeholder implementation.');
-    
-    // Example of what the real implementation would look like:
-    /*
-    // Publish to relays (implementation depends on Nostr library)
-    await nostr.publish(signedEvent, { relays: nwcConfig.relays });
-    
-    // Listen for response (implementation depends on Nostr library)
-    const events = await nostr.query([{
-      kinds: [23195],
-      authors: [nwcConfig.walletPubkey],
-      '#p': [clientPubkey],
-      since: Math.floor(Date.now() / 1000) - 60,
-    }], { relays: nwcConfig.relays });
-    
-    // Process and decrypt response...
-    */
+    // Use the existing nostr client to publish and wait for response
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error('NWC request timeout'));
+      }, 30000); // 30 second timeout
+
+      const executeRequest = async () => {
+        try {
+          // Subscribe to responses before publishing the request
+          const responseFilter = {
+            kinds: [23195],
+            authors: [nwcConfig.walletPubkey],
+            '#p': [clientPubkey],
+            since: Math.floor(Date.now() / 1000) - 60,
+          };
+
+          // Listen for the response
+          const events = await nostr.query([responseFilter], { 
+            signal: AbortSignal.timeout(30000) 
+          });
+
+          // Publish the request event
+          await nostr.event(signedEvent);
+
+          // Check if we already got a response in the initial query
+          for (const event of events) {
+            try {
+              const decryptedContent = await nip04.decrypt(
+                nwcConfig.secret,
+                nwcConfig.walletPubkey,
+                event.content
+              );
+              
+              const response = JSON.parse(decryptedContent) as NWCResponse;
+              clearTimeout(timeoutId);
+              resolve(response);
+              return;
+            } catch (error) {
+              console.warn('Failed to decrypt response event:', error);
+            }
+          }
+
+          // If no immediate response, wait for new events
+          // This is a simplified approach - a full implementation would use proper subscriptions
+          setTimeout(async () => {
+            try {
+              const newEvents = await nostr.query([{
+                ...responseFilter,
+                since: Math.floor(Date.now() / 1000),
+              }], { signal: AbortSignal.timeout(25000) });
+
+              for (const event of newEvents) {
+                try {
+                  const decryptedContent = await nip04.decrypt(
+                    nwcConfig.secret,
+                    nwcConfig.walletPubkey,
+                    event.content
+                  );
+                  
+                  const response = JSON.parse(decryptedContent) as NWCResponse;
+                  clearTimeout(timeoutId);
+                  resolve(response);
+                  return;
+                } catch (error) {
+                  console.warn('Failed to decrypt response event:', error);
+                }
+              }
+              
+              reject(new Error('No response received from NWC wallet'));
+            } catch (error) {
+              clearTimeout(timeoutId);
+              reject(error);
+            }
+          }, 2000); // Wait 2 seconds before checking for responses
+
+        } catch (error) {
+          clearTimeout(timeoutId);
+          reject(error);
+        }
+      };
+
+      executeRequest();
+    });
   };
 
   // Create invoice mutation (real implementation)
