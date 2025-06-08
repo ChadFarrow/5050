@@ -41,59 +41,118 @@ export function useNWC() {
     // For real mode, let's provide a more helpful implementation
     return {
       ...realNWC,
-      createInvoice: async ({ amount, description, expiry }: { 
-        amount: number; 
-        description: string; 
-        expiry?: number; 
-      }) => {
-        console.log('🔄 NWC Real Mode: Attempting invoice creation...');
-        console.log('📝 Using NWC config:', {
-          walletPubkey: nwcConfig?.walletPubkey,
-          relays: nwcConfig?.relays,
+      createInvoice: async (amount: number, description: string): Promise<LightningInvoice> => {
+        console.log('🔄 Creating invoice:', { amount, description });
+        console.log('📡 NWC State:', {
+          hasConfig: !!nwcConfig,
+          hasWalletPubkey: !!nwcConfig?.walletPubkey,
+          hasRelays: !!nwcConfig?.relays?.length,
           hasSecret: !!nwcConfig?.secret,
-          hasConnectionString: !!nwcConfig?.connectionString
+          hasConnectionString: !!nwcConfig?.connectionString,
+          isDemoMode,
         });
-        
+
         try {
           // Check for WebLN availability first
           if (typeof window !== 'undefined' && (window as any).webln) {
-            console.log('💡 WebLN is available in this browser');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const webln = (window as any).webln;
             
-            if (!webln.enabled) {
-              toast({
-                title: 'Wallet Connection Required',
-                description: 'Please unlock your wallet and approve the connection request',
-                variant: 'default',
+            console.log('💡 WebLN detected, attempting to use it');
+            
+            try {
+              // Check if WebLN is already enabled
+              if (webln.enabled) {
+                console.log('✅ WebLN is already enabled');
+              } else {
+                console.log('🔑 Requesting WebLN permission...');
+                try {
+                  // Request WebLN permission
+                  await webln.enable();
+                  console.log('✅ WebLN permission granted');
+                } catch (enableError) {
+                  console.error('❌ WebLN permission denied:', enableError);
+                  throw new Error('WebLN permission was denied. Please check your wallet extension and try again.');
+                }
+              }
+              
+              // Double check WebLN state
+              if (!webln.enabled) {
+                console.error('❌ WebLN is still not enabled after enable attempt');
+                throw new Error('WebLN is not enabled. Please check your wallet extension and make sure it\'s properly connected.');
+              }
+              
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const invoice = await webln.makeInvoice({
+                amount: Math.floor(amount / 1000), // Convert msats to sats
+                defaultMemo: description,
               });
+              
+              // Validate invoice response
+              if (!invoice?.paymentRequest) {
+                throw new Error('Invalid invoice response from WebLN');
+              }
+              
+              console.log('✅ WebLN invoice created:', invoice);
+              return {
+                bolt11: invoice.paymentRequest,
+                payment_hash: invoice.paymentHash || Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
+                payment_request: invoice.paymentRequest,
+                amount_msat: amount,
+                description: description,
+                expires_at: Date.now() + (3600 * 1000),
+                checking_id: invoice.paymentHash || Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
+              };
+              
+            } catch (weblnError) {
+              console.error('❌ WebLN error:', weblnError);
+              if (weblnError instanceof Error) {
+                if (weblnError.message.includes('enable request was rejected')) {
+                  throw new Error('WebLN permission was denied. Please check your wallet extension and try again.');
+                } else if (weblnError.message.includes('not enabled')) {
+                  throw new Error('WebLN is not enabled. Please check your wallet extension and make sure it\'s properly connected.');
+                }
+              }
+              throw new Error(`WebLN error: ${weblnError instanceof Error ? weblnError.message : 'Unknown WebLN error'}`);
             }
           }
           
-          // Try the real NWC implementation first
-          const result = await realNWC.createInvoice({ amount, description, expiry });
-          console.log('✅ Real NWC succeeded:', result);
-          return result;
+          // If WebLN is not available, try NWC
+          if (!isDemoMode && nwcConfig?.walletPubkey && nwcConfig?.relays?.length && nwcConfig?.secret && nwcConfig?.connectionString) {
+            console.log('💡 Using real NWC implementation');
+            try {
+              const result = await realNWC.createInvoice({
+                amount,
+                description,
+                expiry: 3600,
+              });
+              
+              console.log('✅ Real NWC invoice created');
+              return result;
+            } catch (error) {
+              console.error('❌ Real NWC invoice creation failed:', error);
+              throw error;
+            }
+          }
+          
+          // If both WebLN and NWC fail, create a demo invoice
+          console.log('⚠️ Creating demo invoice (no valid configuration)');
+          const demoInvoice = `lnbc${amount}n1nwc_demo_${Date.now()}`;
+          console.log('✅ Demo invoice created:', demoInvoice);
+          
+          return {
+            bolt11: demoInvoice,
+            payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
+            payment_request: demoInvoice,
+            amount_msat: amount,
+            description: `[DEMO - No NWC Config] ${description}`,
+            expires_at: Date.now() + (3600 * 1000),
+            checking_id: 'demo_noconfig_' + Date.now(),
+          };
+          
         } catch (error) {
-          console.error('❌ Real NWC failed:', error);
-          
-          // Handle WebLN errors with user-friendly messages
-          if (error instanceof Error) {
-            if (error.message.includes('WebLN connection') || error.message.includes('WebLN is not enabled')) {
-              toast({
-                title: 'Wallet Connection Required',
-                description: '1. Unlock your wallet\n2. Look for a popup from your wallet\n3. Click "Approve" or "Connect"\n4. Try again',
-                variant: 'destructive',
-              });
-            } else {
-              toast({
-                title: 'Invoice Creation Failed',
-                description: error.message,
-                variant: 'destructive',
-              });
-            }
-          }
-          
-          throw error; // Let the error propagate up
+          console.error('❌ Invoice creation failed:', error);
+          throw error;
         }
       },
     };
@@ -103,11 +162,7 @@ export function useNWC() {
   return {
     ...realNWC,
     // Override specific methods for demo behavior
-    createInvoice: async ({ amount, description, expiry }: { 
-      amount: number; 
-      description: string; 
-      expiry?: number; 
-    }) => {
+    createInvoice: async (amount: number, description: string): Promise<LightningInvoice> => {
       console.warn('🚨 NWC Demo Mode: No valid NWC configuration found');
       console.log('To use real NWC invoices, please configure a NWC wallet in the settings');
       
@@ -118,20 +173,20 @@ export function useNWC() {
       });
       
       // Create a demo invoice that clearly indicates it's for demonstration
-      const mockInvoice: LightningInvoice = {
-        bolt11: `lnbc${Math.floor(amount / 1000)}n1demo_noconfig_${Date.now()}`,
-        payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
-        payment_request: `lnbc${Math.floor(amount / 1000)}n1demo_noconfig_${Date.now()}`,
-        amount_msat: amount,
-        description: `[DEMO - No NWC Config] ${description}`,
-        expires_at: Date.now() + ((expiry || 3600) * 1000),
-        checking_id: 'demo_noconfig_' + Date.now(),
-      };
-
+      const demoInvoice = `lnbc${amount}n1demo_noconfig_${Date.now()}`;
+      
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-
-      return mockInvoice;
+      
+      return {
+        bolt11: demoInvoice,
+        payment_hash: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''),
+        payment_request: demoInvoice,
+        amount_msat: amount,
+        description: `[DEMO - No NWC Config] ${description}`,
+        expires_at: Date.now() + (3600 * 1000),
+        checking_id: 'demo_noconfig_' + Date.now(),
+      };
     },
   };
 }
