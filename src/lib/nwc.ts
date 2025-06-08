@@ -248,6 +248,7 @@ export class NWCClient {
             {
               kinds: [23195], // NIP-47 response
               authors: [this.connection.walletPubkey],
+              '#p': [this.clientPubkey],
               since: Math.floor(Date.now() / 1000),
             }
           ]));
@@ -261,58 +262,64 @@ export class NWCClient {
           try {
             const data = JSON.parse(message.data);
             
-            // Check if this is a response event (kind 23195)
-            if (data[0] === 'EVENT' && data[2].kind === 23195) {
+            // Handle subscription confirmation
+            if (data[0] === 'EOSE') {
+              console.log('✅ NWC subscription confirmed');
+              return;
+            }
+            
+            // Handle response event
+            if (data[0] === 'EVENT') {
               const responseEvent = data[2];
               
               // Verify the response is from the wallet
               if (responseEvent.pubkey !== this.connection.walletPubkey) {
-                console.warn('Received response from unexpected pubkey:', responseEvent.pubkey);
+                console.warn('⚠️ Unexpected pubkey in response:', responseEvent.pubkey);
                 return;
               }
-
+              
               // Decrypt the response
               const decryptedContent = await nip04.decrypt(
                 this.connection.secret,
                 this.connection.walletPubkey,
                 responseEvent.content
               );
-
+              
               const response = JSON.parse(decryptedContent) as NWCResponse;
-
+              
               // Check for errors
               if (response.error) {
-                console.error('NWC error:', response.error);
-                reject(new Error(`NWC error: ${response.error.message}`));
+                console.error('❌ NWC error:', response.error);
+                reject(new Error(`NWC Error: ${response.error.message}`));
                 return;
               }
-
-              console.log('📥 NWC response received:', response.result_type);
-              clearTimeout(timeout);
-              ws.close();
+              
+              console.log('📥 NWC response received:', response);
               resolve(response);
             }
           } catch (error) {
-            console.error('Error processing NWC response:', error);
+            console.error('❌ NWC message handling error:', error);
             reject(error);
           }
         };
 
         ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          clearTimeout(timeout);
-          ws.close();
-          reject(new Error('Failed to connect to relay'));
+          console.error('❌ NWC WebSocket error:', error);
+          reject(new Error('NWC WebSocket error'));
         };
 
         ws.onclose = () => {
+          console.log('🔌 NWC WebSocket closed');
           clearTimeout(timeout);
         };
       });
 
-      return await responsePromise;
+      // Wait for the response
+      const response = await responsePromise;
+      return response;
+      
     } catch (error) {
-      console.error('NWC request failed:', error);
+      console.error('❌ NWC request failed:', error);
       throw error;
     }
   }
