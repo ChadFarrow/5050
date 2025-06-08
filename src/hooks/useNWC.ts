@@ -3,11 +3,13 @@ import { type LightningInvoice } from '@/lib/lightning';
 import { useNWCReal } from './useNWCReal';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { type NWCConfig } from '@/lib/lightning';
+import { useToast } from '@/hooks/useToast';
 
 export function useNWC() {
   const { config } = useAppContext();
   const realNWC = useNWCReal();
   const [nwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
+  const { toast } = useToast();
 
   // Check if we have a valid NWC configuration
   const hasValidConfig = nwcConfig && 
@@ -59,6 +61,30 @@ export function useNWC() {
           return result;
         } catch (error) {
           console.error('❌ Real NWC failed:', error);
+          
+          // Handle WebLN errors with user-friendly messages
+          if (error instanceof Error) {
+            if (error.message.includes('WebLN connection')) {
+              toast({
+                title: 'Wallet Connection Required',
+                description: 'Please approve the WebLN connection in your wallet to create invoices',
+                variant: 'destructive',
+              });
+            } else if (error.message.includes('WebLN is not enabled')) {
+              toast({
+                title: 'Wallet Not Connected',
+                description: 'Please connect your wallet to create invoices',
+                variant: 'destructive',
+              });
+            } else {
+              toast({
+                title: 'Invoice Creation Failed',
+                description: error.message,
+                variant: 'destructive',
+              });
+            }
+          }
+          
           throw error; // Let the error propagate up
         }
       },
@@ -76,6 +102,12 @@ export function useNWC() {
     }) => {
       console.warn('🚨 NWC Demo Mode: No valid NWC configuration found');
       console.log('To use real NWC invoices, please configure a NWC wallet in the settings');
+      
+      toast({
+        title: 'Demo Mode',
+        description: 'Please configure a NWC wallet in the settings to create real invoices',
+        variant: 'default',
+      });
       
       // Create a demo invoice that clearly indicates it's for demonstration
       const mockInvoice: LightningInvoice = {

@@ -111,12 +111,19 @@ export function useNWCReal() {
           try {
             // Enable WebLN if not already enabled
             if (!webln.enabled) {
-              await webln.enable();
+              console.log('🔑 Requesting WebLN permission...');
+              try {
+                await webln.enable();
+                console.log('✅ WebLN permission granted');
+              } catch (enableError) {
+                console.error('❌ WebLN permission denied:', enableError);
+                throw new Error('Please approve the WebLN connection in your wallet to create invoices');
+              }
             }
             
             // Validate WebLN state
             if (!webln.enabled) {
-              throw new Error('WebLN enable request was rejected');
+              throw new Error('WebLN is not enabled. Please approve the connection in your wallet.');
             }
             
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -144,6 +151,13 @@ export function useNWCReal() {
             };
           } catch (weblnError) {
             console.error('❌ WebLN error:', weblnError);
+            if (weblnError instanceof Error) {
+              if (weblnError.message.includes('enable request was rejected')) {
+                throw new Error('Please approve the WebLN connection in your wallet to create invoices');
+              } else if (weblnError.message.includes('not enabled')) {
+                throw new Error('WebLN is not enabled. Please approve the connection in your wallet.');
+              }
+            }
             throw new Error(`WebLN error: ${weblnError instanceof Error ? weblnError.message : 'Unknown WebLN error'}`);
           }
         }
