@@ -55,6 +55,16 @@ export function useNWC() {
         });
         
         try {
+          // Check for WebLN availability first
+          if (typeof window !== 'undefined' && (window as any).webln) {
+            console.log('💡 WebLN is available in this browser');
+            toast({
+              title: 'Connecting to Wallet',
+              description: 'Please approve the connection request in your wallet extension',
+              variant: 'default',
+            });
+          }
+          
           // Try the real NWC implementation first
           const result = await realNWC.createInvoice({ amount, description, expiry });
           console.log('✅ Real NWC succeeded:', result);
@@ -64,16 +74,10 @@ export function useNWC() {
           
           // Handle WebLN errors with user-friendly messages
           if (error instanceof Error) {
-            if (error.message.includes('WebLN connection')) {
+            if (error.message.includes('WebLN connection') || error.message.includes('WebLN is not enabled')) {
               toast({
                 title: 'Wallet Connection Required',
-                description: 'Please approve the WebLN connection in your wallet to create invoices',
-                variant: 'destructive',
-              });
-            } else if (error.message.includes('WebLN is not enabled')) {
-              toast({
-                title: 'Wallet Not Connected',
-                description: 'Please connect your wallet to create invoices',
+                description: '1. Make sure your wallet is unlocked\n2. Look for a popup from your wallet\n3. Click "Approve" or "Connect"\n4. Try again',
                 variant: 'destructive',
               });
             } else {
@@ -105,7 +109,7 @@ export function useNWC() {
       
       toast({
         title: 'Demo Mode',
-        description: 'Please configure a NWC wallet in the settings to create real invoices',
+        description: 'To create real invoices:\n1. Install a WebLN wallet (like Alby)\n2. Configure it in settings\n3. Approve the connection',
         variant: 'default',
       });
       
