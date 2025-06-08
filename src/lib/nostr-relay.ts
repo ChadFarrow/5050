@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NostrEvent } from '@nostrify/nostrify';
 
 export interface RelayMessage {

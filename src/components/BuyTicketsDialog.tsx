@@ -13,8 +13,17 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { useToast } from "@/hooks/useToast";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useNWC } from "@/hooks/useNWC";
 import { formatSats } from "@/lib/utils";
-import type { Campaign } from "@/hooks/useCampaigns";
+import type { Fundraiser } from "@/hooks/useCampaigns";
+import type { LightningInvoice as LightningInvoiceType } from "@/lib/lightning";
+import { LightningInvoiceComponent } from "@/components/LightningInvoice";
+
+interface NWCConfig {
+  walletConnectURL: string;
+  isEnabled: boolean;
+}
 
 interface BuyTicketsDialogProps {
   campaign: Fundraiser;
@@ -28,29 +37,29 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   const { data: stats } = useCampaignStats(campaign.pubkey, campaign.dTag);
   const { toast } = useToast();
   const [_nwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
-  const { isConfigured: isNWCConfigured, createInvoice: createNWCInvoice, isCreatingInvoice: isCreatingNWCInvoice } = useNWC();
+  const { isConfigured: _isNWCConfigured, createInvoice: _createNWCInvoice, isCreatingInvoice: isCreatingNWCInvoice } = useNWC();
   
   const [ticketCount, setTicketCount] = useState("1");
   const [message, setMessage] = useState("");
   const [currentStep, setCurrentStep] = useState<'form' | 'invoice' | 'success'>('form');
-  const [currentInvoice, setCurrentInvoice] = useState<LightningInvoice | null>(null);
-  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
+  const [currentInvoice, setCurrentInvoice] = useState<LightningInvoiceType | null>(null);
+  const [_isCreatingInvoice, _setIsCreatingInvoice] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const tickets = parseInt(ticketCount) || 0;
   const totalCost = tickets * campaign.ticketPrice;
-  const _totalCostSats = Math.floor(totalCost / 1000);
+  const totalCostSats = Math.floor(totalCost / 1000);
 
   const currentPot = stats?.totalRaised || 0;
   const projectedPot = currentPot + totalCost;
   const projectedWinnings = Math.floor(projectedPot / 2);
-  const _projectedWinningSats = Math.floor(projectedWinnings / 1000);
 
   const currentTickets = stats?.totalTickets || 0;
   const projectedTotalTickets = currentTickets + tickets;
   const winChance = projectedTotalTickets > 0 ? (tickets / projectedTotalTickets) * 100 : 0;
 
-  // Check if any lightning service is configured
-  const isLightningConfigured = lightningService.isConfigured() || isNWCConfigured;
+  // For demo purposes, lightning is always considered configured
+  const _isLightningConfigured = true;
 
   const handleCreateInvoice = async () => {
     if (!user) {
@@ -94,7 +103,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       const purchaseId = `purchase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Create fundraiser coordinate
-      const fundraiserCoordinate = `31950:${campaign.pubkey}:${campaign.dTag}`;
+      const campaignCoordinate = `31950:${campaign.pubkey}:${campaign.dTag}`;
 
       // Build tags for ticket purchase event
       const tags: string[][] = [
@@ -120,7 +129,8 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       // Reset form and close dialog
       setTicketCount("1");
       setMessage("");
-      onOpenChange(false);
+      setCurrentStep('success');
+      setIsProcessingPayment(false);
     } catch (error) {
       console.error("Error creating ticket purchase event:", error);
       toast({
@@ -128,7 +138,17 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         description: "Failed to purchase tickets. Please try again.",
         variant: "destructive",
       });
+      setIsProcessingPayment(false);
     }
+  };
+
+  const handlePaymentConfirmed = () => {
+    setCurrentStep('success');
+    setCurrentInvoice(null);
+    toast({
+      title: "Payment Confirmed",
+      description: "Your tickets have been purchased successfully!",
+    });
   };
 
   const handleInvoiceExpired = () => {
@@ -147,7 +167,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   };
 
   const handleClose = () => {
-    if (!isPending && !isCreatingInvoice && currentStep !== 'invoice') {
+    if (!isPending && !isProcessingPayment && currentStep !== 'invoice') {
       setTicketCount("1");
       setMessage("");
       setCurrentStep('form');
@@ -174,26 +194,12 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Lightning Configuration Check */}
-          {currentStep === 'form' && !isLightningConfigured && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Lightning service not configured. Set up your Lightning service to generate real invoices.
-                <div className="mt-2">
-                  <LightningConfig onConfigured={() => {}} />
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* NWC Demo Warning */}
-          {currentStep === 'form' && isNWCConfigured && (
+          {/* Demo Warning */}
+          {currentStep === 'form' && (
             <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
               <AlertCircle className="h-4 w-4 text-orange-600" />
               <AlertDescription className="text-orange-800 dark:text-orange-200">
-                <strong>Demo Mode:</strong> NWC is configured but will generate demo invoices for testing. 
-                In production, this would create real Lightning invoices through your connected wallet.
+                <strong>Demo Mode:</strong> This is a demonstration. No real Lightning payments will be processed.
               </AlertDescription>
             </Alert>
           )}
@@ -234,7 +240,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
                     max="100"
                     value={ticketCount}
                     onChange={(e) => setTicketCount(e.target.value)}
-                    disabled={isPending || isCreatingInvoice}
+                    disabled={isPending || isProcessingPayment}
                   />
                 </div>
 
@@ -245,7 +251,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
                     placeholder="Good luck everyone!"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    disabled={isPending || isCreatingInvoice}
+                    disabled={isPending || isProcessingPayment}
                     rows={2}
                   />
                 </div>
@@ -332,17 +338,17 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         {/* Action Buttons */}
         {currentStep === 'form' && (
           <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button variant="outline" onClick={handleClose} disabled={isPending || isCreatingInvoice}>
+            <Button variant="outline" onClick={handleClose} disabled={isPending || isProcessingPayment}>
               Cancel
             </Button>
             <Button 
               onClick={handleCreateInvoice} 
-              disabled={isPending || isCreatingInvoice || isCreatingNWCInvoice || tickets <= 0 || !isLightningConfigured}
+              disabled={isPending || isCreatingNWCInvoice || isProcessingPayment || tickets <= 0}
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
             >
-              {(isCreatingInvoice || isCreatingNWCInvoice) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {(isCreatingNWCInvoice || isProcessingPayment) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Zap className="mr-2 h-4 w-4" />
-              {(isCreatingInvoice || isCreatingNWCInvoice) ? "Creating Invoice..." : `Create Lightning Invoice`}
+              {(isCreatingNWCInvoice || isProcessingPayment) ? "Processing..." : `Buy Tickets`}
             </Button>
           </div>
         )}

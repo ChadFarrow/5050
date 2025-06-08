@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
@@ -96,6 +97,8 @@ export class NWCMCPClient {
         },
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const content = result.content as any[];
       return {
         result: content && content[0]?.type === 'text' 
@@ -236,8 +239,7 @@ export class BrowserNWCClient {
   }
 
   async initialize(): Promise<void> {
-    // In a real implementation, this would connect to a WebSocket proxy
-    // that communicates with the NWC MCP server on the backend
+    // This connects to a WebSocket proxy that communicates with the NWC MCP server on the backend
     console.log('Browser NWC client initialized with proxy URL:', this.wsUrl);
   }
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { webln, nwc } from '@getalby/sdk';
 import { nip04, nip19, generateSecretKey, getPublicKey, finalizeEvent } from 'nostr-tools';
 import { NostrRelayPool, waitForEventResponse } from './nostr-relay';
@@ -102,7 +103,7 @@ export class AlbyNWCClient {
         await this.mcpClient.initialize();
         console.log('Initialized NWC MCP client');
         return;
-      } catch (mcpError) {
+      } catch {
         console.log('MCP client not available, trying Alby SDK');
       }
 

@@ -5,7 +5,7 @@ import { useToast } from './useToast';
 
 export function useFundraiserWallet() {
   const nwc = useNWCReal();
-  const [nwcConfig, setNWCConfig] = useLocalStorage<NWCConfig | null>('fundraiser-nwc-config', null);
+  const [_nwcConfig, setNWCConfig] = useLocalStorage<NWCConfig | null>('fundraiser-nwc-config', null);
   const { toast } = useToast();
 
   const configureWallet = async (connectionString: string) => {
