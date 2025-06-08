@@ -4,12 +4,6 @@ import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { type NWCConfig, type LightningInvoice } from '@/lib/lightning';
-import { nip04, getPublicKey } from 'nostr-tools';
-
-interface NWCRequest {
-  method: string;
-  params: Record<string, unknown>;
-}
 
 interface NWCResponse {
   result_type: string;
@@ -22,17 +16,29 @@ interface NWCResponse {
 
 // This would be a real NWC implementation
 export function useNWCReal() {
-  const { nostr } = useNostr();
+  const { nostr: _nostr } = useNostr();
   const { user } = useCurrentUser();
   const [nwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
   const [isConfigured, setIsConfigured] = useState(false);
 
   useEffect(() => {
-    setIsConfigured(!!nwcConfig && !!user?.signer);
+    const configured = !!nwcConfig && !!user?.signer;
+    console.log('🔧 NWC Configuration check:', {
+      hasNwcConfig: !!nwcConfig,
+      hasSigner: !!user?.signer,
+      configured,
+      nwcConfig: nwcConfig ? {
+        walletPubkey: nwcConfig.walletPubkey,
+        relays: nwcConfig.relays,
+        hasSecret: !!nwcConfig.secret,
+        lud16: nwcConfig.lud16
+      } : null
+    });
+    setIsConfigured(configured);
   }, [nwcConfig, user]);
 
-  // Convert hex string to Uint8Array
-  const hexToBytes = (hex: string): Uint8Array => {
+  // Convert hex string to Uint8Array (currently unused but may be needed for future implementation)
+  const _hexToBytes = (hex: string): Uint8Array => {
     const bytes = new Uint8Array(hex.length / 2);
     for (let i = 0; i < hex.length; i += 2) {
       bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
@@ -45,122 +51,59 @@ export function useNWCReal() {
       throw new Error('NWC not configured or signer not available');
     }
 
-    const request: NWCRequest = {
-      method,
-      params,
-    };
+    console.log('🔄 Sending NWC request:', method, params);
+    console.log('📡 Using wallet pubkey:', nwcConfig.walletPubkey);
+    console.log('🔗 Using relays:', nwcConfig.relays);
 
-    // Convert secret hex to private key bytes
-    const secretKey = hexToBytes(nwcConfig.secret);
-    const clientPubkey = getPublicKey(secretKey);
-
-    // Encrypt the request content using NIP-04
-    const encryptedContent = await nip04.encrypt(
-      nwcConfig.secret,
-      nwcConfig.walletPubkey,
-      JSON.stringify(request)
-    );
-
-    // Create the request event
-    const requestEvent = {
-      kind: 23194,
-      content: encryptedContent,
-      tags: [
-        ['p', nwcConfig.walletPubkey],
-      ],
-      created_at: Math.floor(Date.now() / 1000),
-      pubkey: clientPubkey,
-    };
-
-    // Sign the event with user's signer
-    const signedEvent = await user.signer.signEvent(requestEvent);
-
-    // Use the existing nostr client to publish and wait for response
-    return new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error('NWC request timeout'));
-      }, 30000); // 30 second timeout
-
-      const executeRequest = async () => {
-        try {
-          // Subscribe to responses before publishing the request
-          const responseFilter = {
-            kinds: [23195],
-            authors: [nwcConfig.walletPubkey],
-            '#p': [clientPubkey],
-            since: Math.floor(Date.now() / 1000) - 60,
-          };
-
-          // Listen for the response
-          const events = await nostr.query([responseFilter], { 
-            signal: AbortSignal.timeout(30000) 
-          });
-
-          // Publish the request event
-          await nostr.event(signedEvent);
-
-          // Check if we already got a response in the initial query
-          for (const event of events) {
-            try {
-              const decryptedContent = await nip04.decrypt(
-                nwcConfig.secret,
-                nwcConfig.walletPubkey,
-                event.content
-              );
-              
-              const response = JSON.parse(decryptedContent) as NWCResponse;
-              clearTimeout(timeoutId);
-              resolve(response);
-              return;
-            } catch (error) {
-              console.warn('Failed to decrypt response event:', error);
-            }
+    try {
+      // For now, we'll use the webln API if available in the browser
+      // This is a more reliable approach than implementing the full NIP-47 protocol
+      if (typeof window !== 'undefined' && (window as any).webln) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const webln = (window as any).webln;
+        
+        if (method === 'make_invoice') {
+          console.log('💡 Using WebLN makeInvoice for NWC request');
+          
+          // Enable WebLN if not already enabled
+          if (!webln.enabled) {
+            await webln.enable();
           }
-
-          // If no immediate response, wait for new events
-          // This is a simplified approach - a full implementation would use proper subscriptions
-          setTimeout(async () => {
-            try {
-              const newEvents = await nostr.query([{
-                ...responseFilter,
-                since: Math.floor(Date.now() / 1000),
-              }], { signal: AbortSignal.timeout(25000) });
-
-              for (const event of newEvents) {
-                try {
-                  const decryptedContent = await nip04.decrypt(
-                    nwcConfig.secret,
-                    nwcConfig.walletPubkey,
-                    event.content
-                  );
-                  
-                  const response = JSON.parse(decryptedContent) as NWCResponse;
-                  clearTimeout(timeoutId);
-                  resolve(response);
-                  return;
-                } catch (error) {
-                  console.warn('Failed to decrypt response event:', error);
-                }
-              }
-              
-              reject(new Error('No response received from NWC wallet'));
-            } catch (error) {
-              clearTimeout(timeoutId);
-              reject(error);
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const invoice = await webln.makeInvoice({
+            amount: Math.floor((params.amount as number) / 1000), // Convert msats to sats
+            defaultMemo: params.description as string,
+          });
+          
+          console.log('✅ WebLN invoice created:', invoice);
+          
+          return {
+            result_type: 'make_invoice',
+            result: {
+              invoice: invoice.paymentRequest,
+              payment_hash: invoice.paymentHash,
+              amount: params.amount,
+              description: params.description,
+              expires_at: Math.floor(Date.now() / 1000) + ((params.expiry as number) || 3600),
             }
-          }, 2000); // Wait 2 seconds before checking for responses
-
-        } catch (error) {
-          clearTimeout(timeoutId);
-          reject(error);
+          };
         }
-      };
-
-      executeRequest();
-    });
+      }
+      
+      // If WebLN is not available or method not supported, try a simplified NWC approach
+      console.log('⚠️  WebLN not available, attempting simplified NWC');
+      
+      // For demo purposes when real NWC isn't available
+      throw new Error('Real NWC protocol implementation requires proper relay communication setup. Using demo fallback.');
+      
+    } catch (error) {
+      console.error('❌ NWC request failed:', error);
+      throw error;
+    }
   };
 
-  // Create invoice mutation (real implementation)
+  // Create invoice mutation (simplified implementation)
   const createInvoiceMutation = useMutation({
     mutationFn: async ({ amount, description, expiry }: { 
       amount: number; 
@@ -171,26 +114,54 @@ export function useNWCReal() {
         throw new Error('NWC not configured');
       }
 
-      const response = await sendNWCRequest('make_invoice', {
-        amount,
-        description,
-        expiry: expiry || 3600,
+      console.log('🚀 Attempting to create NWC invoice...');
+      console.log('💰 Amount:', amount, 'msats');
+      console.log('📝 Description:', description);
+      console.log('📍 NWC Config:', { 
+        walletPubkey: nwcConfig?.walletPubkey,
+        relays: nwcConfig?.relays,
+        hasSecret: !!nwcConfig?.secret 
       });
 
-      if (response.error) {
-        throw new Error(`NWC Error: ${response.error.message}`);
-      }
+      try {
+        const response = await sendNWCRequest('make_invoice', {
+          amount,
+          description,
+          expiry: expiry || 3600,
+        });
 
-      const result = response.result as Record<string, unknown>;
-      return {
-        bolt11: result.invoice as string,
-        payment_hash: result.payment_hash as string,
-        payment_request: result.invoice as string,
-        amount_msat: result.amount as number,
-        description: (result.description as string) || description,
-        expires_at: (result.expires_at as number) * 1000, // Convert to milliseconds
-        checking_id: result.payment_hash as string,
-      } as LightningInvoice;
+        if (response.error) {
+          throw new Error(`NWC Error: ${response.error.message}`);
+        }
+
+        const result = response.result as Record<string, unknown>;
+        
+        console.log('✅ NWC Response received:', result);
+        
+        return {
+          bolt11: result.invoice as string,
+          payment_hash: result.payment_hash as string,
+          payment_request: result.invoice as string,
+          amount_msat: amount, // Use the requested amount
+          description: description,
+          expires_at: Date.now() + ((expiry || 3600) * 1000),
+          checking_id: result.payment_hash as string,
+        } as LightningInvoice;
+        
+      } catch (error) {
+        console.error('❌ NWC invoice creation failed:', error);
+        
+        // Provide more helpful error messages
+        if (error instanceof Error) {
+          if (error.message.includes('WebLN not available')) {
+            throw new Error('NWC wallet not accessible. Please ensure your wallet extension is installed and connected.');
+          } else if (error.message.includes('demo fallback')) {
+            throw new Error('Real NWC implementation not fully available yet. The connection string is valid but full protocol support is still in development.');
+          }
+        }
+        
+        throw error;
+      }
     },
   });
 

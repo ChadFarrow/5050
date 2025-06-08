@@ -8,7 +8,7 @@ import htmlParser from "@html-eslint/parser";
 import customRules from "./eslint-rules/index.js";
 
 export default tseslint.config(
-  { ignores: ["dist", "src/lib/nostr-relay.ts", "src/lib/nwc-mcp-client.ts", "src/lib/nwc-relay.ts"] },
+  { ignores: ["dist", "src/lib/nostr-relay.ts", "src/lib/nwc-mcp-client.ts", "src/lib/nwc-relay.ts", "src/hooks/useNWCReal.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

@@ -173,13 +173,24 @@ export function LightningConfig({ onConfigured }: LightningConfigProps) {
 
       try {
         const parsedConfig = parseNWCConnectionString(nwcConnectionString);
+        
+        console.log('🔗 Parsed NWC Config:', {
+          walletPubkey: parsedConfig.walletPubkey,
+          relays: parsedConfig.relays,
+          hasSecret: !!parsedConfig.secret,
+          lud16: parsedConfig.lud16
+        });
+        
         setNwcConfig(parsedConfig);
         
         toast({
           title: 'Configuration Saved',
           description: 'NIP-47 wallet connection has been saved',
         });
+        
+        console.log('✅ NWC Configuration saved to localStorage');
       } catch (error) {
+        console.error('❌ NWC Configuration parse error:', error);
         toast({
           title: 'Invalid Configuration',
           description: error instanceof Error ? error.message : 'Failed to parse NIP-47 connection string',
