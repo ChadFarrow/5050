@@ -1,7 +1,7 @@
 // NOTE: This file is stable and usually should not be modified.
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
-import { ChevronDown, LogOut, UserIcon, UserPlus } from 'lucide-react';
+import { ChevronDown, LogOut, UserIcon, UserPlus, Zap } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx'
 import { RelaySelector } from '@/components/RelaySelector';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { LightningConfig } from '@/components/LightningConfig';
+import { useNWC } from '@/hooks/useNWC';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;
@@ -20,6 +24,8 @@ interface AccountSwitcherProps {
 
 export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   const { currentUser, otherUsers, setLogin, removeLogin } = useLoggedInAccounts();
+  const { isConfigured } = useNWC();
+  const [lightningDialogOpen, setLightningDialogOpen] = useState(false);
 
   if (!currentUser) return null;
 
@@ -28,7 +34,8 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   }
 
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className='flex items-center gap-3 p-3 rounded-full hover:bg-accent transition-all w-full text-foreground'>
           <Avatar className='w-10 h-10'>
@@ -64,6 +71,14 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem
+          onClick={() => setLightningDialogOpen(true)}
+          className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+        >
+          <Zap className='w-4 h-4' />
+          <span>Lightning Wallet</span>
+          {isConfigured && <div className='w-2 h-2 rounded-full bg-green-500 ml-auto'></div>}
+        </DropdownMenuItem>
+        <DropdownMenuItem
           onClick={onAddAccountClick}
           className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
         >
@@ -78,6 +93,24 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
           <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+
+      <Dialog open={lightningDialogOpen} onOpenChange={setLightningDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Zap className="h-5 w-5 mr-2" />
+              Lightning Wallet Settings
+            </DialogTitle>
+            <DialogDescription>
+              Configure your Lightning wallet connection for ticket purchases
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <LightningConfig />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

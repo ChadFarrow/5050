@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Wallet, ExternalLink, Copy, Check, AlertCircle, RefreshCw, Server, Settings2 } from 'lucide-react';
+import { Zap, Wallet, ExternalLink, Copy, Check, AlertCircle, RefreshCw, Server, Settings2, Bug, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { useNWC } from '@/hooks/useNWC';
 import { useToast } from '@/hooks/useToast';
 
 export function LightningConfig() {
-  const { nwcConfig, isConfigured, isConnecting, connect, disconnect, getBalance, configureMCPServer } = useNWC();
+  const { nwcConfig, isConfigured, isConnecting, connect, disconnect, getBalance, configureMCPServer, nwcClient } = useNWC();
   const [connectionString, setConnectionString] = useState('');
   const [copied, setCopied] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
@@ -21,6 +21,15 @@ export function LightningConfig() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [mcpServerUrl, setMcpServerUrl] = useState('');
   const [mcpApiKey, setMcpApiKey] = useState('');
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<{
+    connectionValid: boolean;
+    relayConnected: boolean;
+    balanceAvailable: boolean;
+    invoiceCapable: boolean;
+    mcpServerReachable: boolean;
+  } | null>(null);
+  const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
   const { toast } = useToast();
 
   const handleConnect = async () => {
@@ -77,7 +86,7 @@ export function LightningConfig() {
     if (isConfigured) {
       loadBalance();
       // Initialize MCP settings from config
-      setMcpServerUrl(nwcConfig.mcpServer?.serverUrl || '');
+      setMcpServerUrl(nwcConfig.mcpServer?.serverUrl || 'https://mcp.getalby.com/mcp');
       setMcpApiKey(nwcConfig.mcpServer?.apiKey || '');
     } else {
       setBalance(null);
@@ -107,6 +116,115 @@ export function LightningConfig() {
       title: "MCP Settings Updated",
       description: "MCP server configuration has been updated",
     });
+  };
+
+  const runDiagnostics = async () => {
+    if (!nwcClient) {
+      toast({
+        title: "No Connection",
+        description: "Please connect a wallet first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRunningDiagnostics(true);
+    const results = {
+      connectionValid: false,
+      relayConnected: false,
+      balanceAvailable: false,
+      invoiceCapable: false,
+      mcpServerReachable: false,
+    };
+
+    try {
+      // Test 1: Connection validity
+      console.log('Testing connection validity...');
+      const connectionInfo = nwcClient.connectionInfo;
+      results.connectionValid = Boolean(connectionInfo.walletPubkey && connectionInfo.relayUrl);
+
+      // Test 2: Relay connection (try to get info first)
+      console.log('Testing relay connection...');
+      try {
+        // Start with getInfo which is less likely to fail due to permissions
+        const info = await nwcClient.getInfo();
+        console.log('Wallet info:', info);
+        results.relayConnected = true;
+        
+        // If getInfo works, try balance
+        try {
+          const balance = await nwcClient.getBalance();
+          console.log('Balance:', balance);
+          results.balanceAvailable = true;
+        } catch (balanceError) {
+          console.log('Balance check failed (permissions?):', balanceError);
+          results.balanceAvailable = false;
+        }
+      } catch (infoError) {
+        console.log('Info check failed, trying fallback tests...', infoError);
+        // If getInfo fails, try balance as fallback
+        try {
+          await nwcClient.getBalance();
+          results.relayConnected = true;
+          results.balanceAvailable = true;
+        } catch {
+          console.log('Balance also failed, trying invoice test...');
+          // Last resort: try to create a test invoice
+          try {
+            await nwcClient.makeInvoice(1000, 'Connection test'); // 1 sat test
+            results.relayConnected = true;
+            results.invoiceCapable = true;
+          } catch (invoiceError) {
+            console.log('All connection tests failed:', invoiceError);
+            results.relayConnected = false;
+          }
+        }
+      }
+
+      // Test 3: Invoice capability (if not already tested)
+      if (results.relayConnected && !results.invoiceCapable) {
+        console.log('Testing invoice capability...');
+        try {
+          await nwcClient.makeInvoice(1000, 'Test invoice creation');
+          results.invoiceCapable = true;
+        } catch (error) {
+          console.log('Invoice capability test failed:', error);
+          results.invoiceCapable = false;
+        }
+      }
+
+      // Test 4: MCP Server reachability (if enabled)
+      if (nwcConfig.mcpServer?.enabled && mcpServerUrl) {
+        console.log('Testing MCP server...');
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const response = await fetch(mcpServerUrl + '/health', { 
+            method: 'GET',
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          results.mcpServerReachable = response.ok;
+        } catch (error) {
+          console.log('MCP server test failed:', error);
+          results.mcpServerReachable = false;
+        }
+      } else {
+        results.mcpServerReachable = !nwcConfig.mcpServer?.enabled; // True if MCP is disabled
+      }
+
+    } catch (error) {
+      console.error('Diagnostics failed:', error);
+      toast({
+        title: "Diagnostics Failed",
+        description: "Unable to run connection diagnostics",
+        variant: "destructive",
+      });
+    } finally {
+      setDiagnostics(results);
+      setIsRunningDiagnostics(false);
+    }
   };
 
   return (
@@ -175,6 +293,103 @@ export function LightningConfig() {
                 </div>
               </div>
 
+              {/* Diagnostics Section */}
+              <Collapsible open={showDiagnostics} onOpenChange={setShowDiagnostics}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between">
+                    <div className="flex items-center">
+                      <Bug className="h-4 w-4 mr-2" />
+                      Connection Diagnostics
+                    </div>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 pt-4">
+                  <div className="space-y-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={runDiagnostics}
+                      disabled={isRunningDiagnostics}
+                      className="w-full"
+                    >
+                      {isRunningDiagnostics ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Running Diagnostics...
+                        </>
+                      ) : (
+                        <>
+                          <Bug className="h-4 w-4 mr-2" />
+                          Run Connection Test
+                        </>
+                      )}
+                    </Button>
+
+                    {diagnostics && (
+                      <div className="space-y-2 p-3 bg-muted rounded-lg">
+                        <div className="text-sm font-medium mb-2">Test Results:</div>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span>Connection String Valid</span>
+                            {diagnostics.connectionValid ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-600" />
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Relay Connection</span>
+                            {diagnostics.relayConnected ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-600" />
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Balance Available</span>
+                            {diagnostics.balanceAvailable ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-600" />
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Invoice Creation</span>
+                            {diagnostics.invoiceCapable ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-600" />
+                            )}
+                          </div>
+                          {nwcConfig.mcpServer?.enabled && (
+                            <div className="flex items-center justify-between">
+                              <span>MCP Server</span>
+                              {diagnostics.mcpServerReachable ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-600" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {(!diagnostics.connectionValid || !diagnostics.relayConnected || !diagnostics.invoiceCapable || (nwcConfig.mcpServer?.enabled && !diagnostics.mcpServerReachable)) && (
+                          <Alert className="mt-3">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription className="text-xs">
+                              {!diagnostics.connectionValid && "Connection string format is invalid. "}
+                              {!diagnostics.relayConnected && "Cannot connect to NWC relay. Check your wallet settings. "}
+                              {!diagnostics.invoiceCapable && "Wallet cannot create invoices. Check permissions. "}
+                              {nwcConfig.mcpServer?.enabled && !diagnostics.mcpServerReachable && "MCP server is unreachable. "}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               {/* MCP Server Configuration */}
               <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
                 <CollapsibleTrigger asChild>
@@ -214,7 +429,7 @@ export function LightningConfig() {
                           <Label htmlFor="mcp-server-url">Server URL</Label>
                           <Input
                             id="mcp-server-url"
-                            placeholder="http://localhost:3000"
+                            placeholder="https://mcp.getalby.com/mcp"
                             value={mcpServerUrl}
                             onChange={(e) => setMcpServerUrl(e.target.value)}
                             className="text-sm"

@@ -64,8 +64,8 @@ export function useNWC() {
         enabled: true,
         alias: `Wallet ${connection.walletPubkey.slice(0, 8)}...`,
         mcpServer: {
-          enabled: false, // Start with MCP disabled by default
-          serverUrl: undefined,
+          enabled: true, // Enable MCP by default
+          serverUrl: 'https://mcp.getalby.com/mcp',
           apiKey: undefined,
         },
       };
