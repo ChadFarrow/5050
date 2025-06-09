@@ -23,19 +23,25 @@ export class NWCTransport {
   }
 
   async sendRequest(request: { method: string; params: Record<string, unknown> }): Promise<NWCResponse> {
+    console.log('NWC Transport: Sending request', { method: request.method, params: request.params, mcpEnabled: this.mcpConfig?.enabled });
+    
     // Try MCP server first if configured
     if (this.mcpConfig?.enabled) {
+      console.log('NWC Transport: Attempting MCP request');
       try {
-        return await this.sendMCPRequest({
+        const result = await this.sendMCPRequest({
           method: request.method,
           params: request.params
         });
+        console.log('NWC Transport: MCP request succeeded');
+        return result;
       } catch (mcpError) {
-        console.log('MCP request failed, falling back to direct NWC:', mcpError);
+        console.log('NWC Transport: MCP request failed, falling back to direct NWC:', mcpError);
         // Fall through to direct NWC implementation
       }
     }
 
+    console.log('NWC Transport: Using direct NWC connection');
     return this.sendDirectRequest(request);
   }
 
@@ -74,7 +80,7 @@ export class NWCTransport {
     console.log('MCP request body:', requestBody);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     try {
       const response = await fetch(serverUrl, {
@@ -128,50 +134,73 @@ export class NWCTransport {
       throw new Error('MCP server URL not configured');
     }
 
-    const response = await fetch(serverUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.mcpConfig!.apiKey && { 'Authorization': `Bearer ${this.mcpConfig!.apiKey}` }),
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: request.id || Date.now().toString(),
-        method: 'tools/call',
-        params: {
-          name: 'nwc',
-          arguments: {
-            method: request.method,
-            ...request.params
-          }
+    console.log('Sending request to local MCP server:', serverUrl);
+    const requestBody = {
+      jsonrpc: '2.0',
+      id: request.id || Date.now().toString(),
+      method: 'tools/call',
+      params: {
+        name: 'nwc',
+        arguments: {
+          method: request.method,
+          ...request.params
         }
-      })
-    });
+      }
+    };
+    console.log('Local MCP request body:', requestBody);
 
-    if (!response.ok) {
-      throw new Error(`Local MCP server error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.error) {
-      throw new Error(`Local MCP error: ${data.error.message || 'Unknown error'}`);
-    }
-
-    // Parse the MCP tools response
-    const toolResult = data.result?.content?.[0]?.text;
-    if (!toolResult) {
-      throw new Error('Invalid MCP response format');
-    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     try {
-      const nwcResult = JSON.parse(toolResult);
-      return {
-        result_type: request.method as NWCMethod,
-        result: nwcResult
-      };
-    } catch (parseError) {
-      throw new Error(`Failed to parse MCP tool result: ${parseError}`);
+      const response = await fetch(serverUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.mcpConfig!.apiKey && { 'Authorization': `Bearer ${this.mcpConfig!.apiKey}` }),
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      console.log('Local MCP server response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Local MCP server error response:', errorText);
+        throw new Error(`Local MCP server error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Local MCP server response data:', data);
+      
+      if (data.error) {
+        console.error('Local MCP error:', data.error);
+        throw new Error(`Local MCP error: ${data.error.message || 'Unknown error'}`);
+      }
+
+      // Parse the MCP tools response
+      const toolResult = data.result?.content?.[0]?.text;
+      if (!toolResult) {
+        throw new Error('Invalid MCP response format');
+      }
+
+      try {
+        const nwcResult = JSON.parse(toolResult);
+        return {
+          result_type: request.method as NWCMethod,
+          result: nwcResult
+        };
+      } catch (parseError) {
+        throw new Error(`Failed to parse MCP tool result: ${parseError}`);
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Local MCP server request timed out');
+      }
+      throw error;
     }
   }
 
@@ -222,10 +251,10 @@ export class NWCTransport {
 
     return new Promise<NWCResponse>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        console.log('NWC request timed out after 45 seconds');
+        console.log('NWC request timed out after 15 seconds');
         ws.close();
         reject(new Error('NWC request timed out. Check your wallet is online and relay is accessible.'));
-      }, 45000); // Increased timeout to 45 seconds
+      }, 15000); // 15 second timeout
 
       ws.onopen = () => {
         console.log('WebSocket connected to relay');

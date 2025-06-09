@@ -113,19 +113,77 @@ export function useNWC() {
       throw new Error('NWC not configured');
     }
 
+    console.log('Creating invoice:', { amount, description });
+    console.log('NWC Client config:', { 
+      mcpEnabled: nwcConfig?.mcpServer?.enabled, 
+      mcpUrl: nwcConfig?.mcpServer?.serverUrl 
+    });
+    
     setIsCreatingInvoice(true);
     try {
-      const invoice = await nwcClient.makeInvoice(amount, description);
+      // First, let's test if MCP server is reachable
+      if (nwcConfig?.mcpServer?.enabled && nwcConfig.mcpServer.serverUrl) {
+        console.log('Testing MCP server connectivity...');
+        try {
+          const testResponse = await fetch(nwcConfig.mcpServer.serverUrl, { 
+            method: 'GET',
+            signal: AbortSignal.timeout(5000)
+          });
+          console.log('MCP server test response:', testResponse.status);
+        } catch (mcpTestError) {
+          console.error('MCP server is not reachable:', mcpTestError);
+          // Don't fail here, let the actual request handle it
+        }
+      }
+      
+      // Add timeout to invoice creation with more detailed logging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          console.error('Invoice creation timed out after 15 seconds');
+          reject(new Error('Invoice creation timed out after 15 seconds. Check your wallet is online and MCP server is running. Try disabling MCP in Advanced Settings to use direct connection.'));
+        }, 15000);
+        return timeoutId;
+      });
+      
+      console.log('Starting invoice creation...');
+      const invoicePromise = nwcClient.makeInvoice(amount, description);
+      const invoice = await Promise.race([invoicePromise, timeoutPromise]);
+      
+      console.log('Invoice created successfully:', invoice);
       toast.lightning.invoiceCreated(amount);
       return invoice;
     } catch (error) {
       console.error('Failed to create invoice:', error);
-      toast.error("Invoice Creation Failed", error instanceof Error ? error.message : "Failed to create invoice");
+      
+      // Provide more specific error messages
+      const errorMessage = error instanceof Error ? error.message : "Failed to create invoice";
+      
+      if (errorMessage.includes('timed out')) {
+        toast.error(
+          "Invoice Creation Timeout", 
+          `Your wallet may be offline or not responding. Try: 1) Disable MCP in Advanced Settings 2) Regenerate your NWC connection string 3) Check relay connection using the test tools`
+        );
+      } else if (errorMessage.includes('UNAUTHORIZED') || errorMessage.includes('permission')) {
+        toast.error("Permission Denied", "Enable 'make_invoice' permission in your wallet's NWC settings");
+      } else if (errorMessage.includes('WebSocket') || errorMessage.includes('relay')) {
+        toast.error(
+          "Connection Failed", 
+          "Cannot reach your wallet's relay. Check your wallet is online or try a different NWC connection string."
+        );
+      } else if (errorMessage.includes('MCP')) {
+        toast.error(
+          "MCP Server Error", 
+          "MCP server issue. Try disabling MCP in Advanced Settings to use direct connection."
+        );
+      } else {
+        toast.error("Invoice Creation Failed", errorMessage);
+      }
+      
       throw error;
     } finally {
       setIsCreatingInvoice(false);
     }
-  }, [nwcClient, toast]);
+  }, [nwcClient, nwcConfig?.mcpServer?.enabled, nwcConfig?.mcpServer?.serverUrl, toast]);
 
   const isConfigured = Boolean(nwcConfig?.enabled && nwcConfig.connectionString);
 

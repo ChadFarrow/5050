@@ -388,25 +388,165 @@ export function LightningConfig() {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-4 pt-4">
                   <div className="space-y-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={runDiagnostics}
-                      disabled={isRunningDiagnostics}
-                      className="w-full"
-                    >
-                      {isRunningDiagnostics ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Running Diagnostics...
-                        </>
-                      ) : (
-                        <>
-                          <Bug className="h-4 w-4 mr-2" />
-                          Run Connection Test
-                        </>
-                      )}
-                    </Button>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={runDiagnostics}
+                        disabled={isRunningDiagnostics}
+                        className="w-full"
+                      >
+                        {isRunningDiagnostics ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Running Diagnostics...
+                          </>
+                        ) : (
+                          <>
+                            <Bug className="h-4 w-4 mr-2" />
+                            Run Connection Test
+                          </>
+                        )}
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (nwcClient) {
+                            console.log('Testing quick invoice creation...');
+                            const startTime = Date.now();
+                            try {
+                              // Test with very short timeout first
+                              const quickTest = nwcClient.makeInvoice(1000, 'Quick test invoice');
+                              const timeoutTest = new Promise<never>((_, reject) => {
+                                setTimeout(() => reject(new Error('Quick test timeout after 10 seconds')), 10000);
+                              });
+                              
+                              const result = await Promise.race([quickTest, timeoutTest]);
+                              const duration = Date.now() - startTime;
+                              console.log(`Quick test successful in ${duration}ms:`, result);
+                              toast({ 
+                                title: 'Test Invoice Created', 
+                                description: `Success in ${duration}ms. Your wallet is working correctly!` 
+                              });
+                            } catch (error) {
+                              const duration = Date.now() - startTime;
+                              console.error(`Quick test failed after ${duration}ms:`, error);
+                              toast({ 
+                                title: 'Test Failed', 
+                                description: `Failed after ${duration}ms: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+                                variant: 'destructive' 
+                              });
+                            }
+                          }
+                        }}
+                        disabled={!nwcClient}
+                        className="w-full"
+                      >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Quick Invoice Test (10s)
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (nwcClient) {
+                            console.log('Testing relay connection...');
+                            const connectionInfo = nwcClient.connectionInfo;
+                            const startTime = Date.now();
+                            
+                            try {
+                              const ws = new WebSocket(connectionInfo.relayUrl);
+                              
+                              const connectionTest = new Promise<string>((resolve, reject) => {
+                                const timeout = setTimeout(() => {
+                                  ws.close();
+                                  reject(new Error('Relay connection timeout after 5 seconds'));
+                                }, 5000);
+                                
+                                ws.onopen = () => {
+                                  const duration = Date.now() - startTime;
+                                  console.log(`Relay connected in ${duration}ms`);
+                                  clearTimeout(timeout);
+                                  ws.close();
+                                  resolve(`Connected in ${duration}ms`);
+                                };
+                                
+                                ws.onerror = (_error) => {
+                                  clearTimeout(timeout);
+                                  reject(new Error('Relay connection failed'));
+                                };
+                                
+                                ws.onclose = (event) => {
+                                  if (event.code !== 1000) {
+                                    clearTimeout(timeout);
+                                    reject(new Error(`Relay closed unexpectedly (${event.code})`));
+                                  }
+                                };
+                              });
+                              
+                              const result = await connectionTest;
+                              toast({ 
+                                title: 'Relay Test Passed', 
+                                description: result 
+                              });
+                            } catch (error) {
+                              const duration = Date.now() - startTime;
+                              console.error(`Relay test failed after ${duration}ms:`, error);
+                              toast({ 
+                                title: 'Relay Test Failed', 
+                                description: `Failed after ${duration}ms: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+                                variant: 'destructive' 
+                              });
+                            }
+                          }
+                        }}
+                        disabled={!nwcClient}
+                        className="w-full"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Test Relay Connection
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (nwcClient) {
+                            console.log('Testing direct NWC (bypassing MCP)...');
+                            const startTime = Date.now();
+                            try {
+                              // Create a temporary client with MCP disabled
+                              const { NWCClient } = await import('@/lib/nwc');
+                              const directClient = new NWCClient(nwcConfig.connectionString, { enabled: false });
+                              
+                              const result = await directClient.makeInvoice(1000, 'Direct NWC test');
+                              const duration = Date.now() - startTime;
+                              console.log(`Direct NWC test successful in ${duration}ms:`, result);
+                              toast({ 
+                                title: 'Direct NWC Test Passed', 
+                                description: `Success in ${duration}ms. Direct connection works!` 
+                              });
+                            } catch (error) {
+                              const duration = Date.now() - startTime;
+                              console.error(`Direct NWC test failed after ${duration}ms:`, error);
+                              toast({ 
+                                title: 'Direct NWC Test Failed', 
+                                description: `Failed after ${duration}ms: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+                                variant: 'destructive' 
+                              });
+                            }
+                          }
+                        }}
+                        disabled={!nwcClient}
+                        className="w-full"
+                      >
+                        <Wallet className="h-4 w-4 mr-2" />
+                        Test Direct NWC (Bypass MCP)
+                      </Button>
+                    </div>
 
                     {diagnostics && (
                       <div className="space-y-2 p-3 bg-muted rounded-lg">
@@ -474,8 +614,18 @@ export function LightningConfig() {
                                   <div>❌ MCP server unreachable. Try disabling MCP in Advanced Settings or check server URL</div>
                                 )}
                                 {(!diagnostics.relayConnected || !diagnostics.invoiceCapable) && (
-                                  <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950 rounded text-xs">
-                                    💡 <strong>Quick Fix:</strong> Try disabling MCP server temporarily. Go to Advanced Settings and turn off "MCP Server" to use direct NWC connection.
+                                  <div className="mt-2 space-y-2">
+                                    <div className="p-2 bg-yellow-50 dark:bg-yellow-950 rounded text-xs">
+                                      💡 <strong>Quick Fix:</strong> Try disabling MCP server temporarily. Go to Advanced Settings and turn off "MCP Server" to use direct NWC connection.
+                                    </div>
+                                    <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded text-xs">
+                                      🔧 <strong>Advanced Troubleshooting:</strong>
+                                      <br />1. Use "Test Relay Connection" to check if the relay is reachable
+                                      <br />2. Use "Test Direct NWC" to bypass MCP server issues  
+                                      <br />3. Try "Quick Invoice Test" with different timeout settings
+                                      <br />4. Check browser console for detailed error messages
+                                      <br />5. Regenerate NWC connection string in your wallet
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -546,20 +696,51 @@ export function LightningConfig() {
                           />
                         </div>
 
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleMCPUpdate}
-                          className="w-full"
-                        >
-                          Update MCP Settings
-                        </Button>
+                        <div className="space-y-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleMCPUpdate}
+                            className="w-full"
+                          >
+                            Update MCP Settings
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              console.log('Testing MCP server status...');
+                              try {
+                                const response = await fetch(mcpServerUrl, { 
+                                  method: 'GET',
+                                  signal: AbortSignal.timeout(5000)
+                                });
+                                console.log('MCP server response:', response.status);
+                                toast({ title: 'MCP Server Status', description: `Server responding (${response.status})` });
+                              } catch (error) {
+                                console.error('MCP server test failed:', error);
+                                toast({ title: 'MCP Server Error', description: 'Server not reachable. Check if it\'s running.', variant: 'destructive' });
+                              }
+                            }}
+                            className="w-full"
+                          >
+                            <Server className="h-4 w-4 mr-2" />
+                            Test MCP Server
+                          </Button>
+                        </div>
 
                         <Alert>
                           <Server className="h-4 w-4" />
                           <AlertDescription className="text-xs">
                             The MCP server acts as a bridge between this app and your NWC wallet, 
                             potentially improving performance and reliability.
+                            <div className="mt-2">
+                              <strong>Troubleshooting:</strong> If invoice creation fails, check:
+                              <br />• MCP server is running: <code>curl http://localhost:3000</code>
+                              <br />• Connection string is set in environment
+                              <br />• Wallet permissions allow "make_invoice"
+                            </div>
                           </AlertDescription>
                         </Alert>
                       </div>
