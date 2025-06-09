@@ -54,6 +54,7 @@ export function useNWC() {
       console.log('NWC client created, connection info:', connection);
       
       // Try to get wallet info to verify the connection works
+      // Note: Some wallets only support specific methods (like make_invoice)
       try {
         // Start with getInfo which is more likely to work
         console.log('Testing connection with getInfo...');
@@ -73,8 +74,8 @@ export function useNWC() {
             console.log('Connection test: makeInvoice succeeded', invoice);
           } catch (invoiceError) {
             console.log('Connection test: All methods failed', invoiceError);
-            // Don't fail completely - the connection string might still be valid
-            console.warn('All connection tests failed, but proceeding with connection...');
+            // Don't fail completely - some wallets work but have limited permissions
+            console.warn('All connection tests failed, but proceeding with connection. Balance may not be available.');
           }
         }
       }

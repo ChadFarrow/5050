@@ -70,11 +70,17 @@ export function LightningConfig() {
     
     setIsLoadingBalance(true);
     try {
-      const walletBalance = await getBalance();
-      setBalance(walletBalance);
+      // Set a shorter timeout for balance check since it's optional
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Balance check timed out')), 10000)
+      );
+      
+      const balancePromise = getBalance();
+      const walletBalance = await Promise.race([balancePromise, timeoutPromise]);
+      setBalance(walletBalance as number);
     } catch (error) {
-      console.error('Failed to load balance:', error);
-      // Don't show error toast for balance - it's optional
+      console.log('Balance check failed (this is optional):', error);
+      // Balance is optional - don't show as error, just mark as unavailable
       setBalance(null);
     } finally {
       setIsLoadingBalance(false);
@@ -332,8 +338,11 @@ export function LightningConfig() {
                     <span className="text-sm">{balance.toLocaleString()} sats</span>
                   ) : (
                     <span className="text-sm text-muted-foreground">
-                      {isLoadingBalance ? "Loading..." : "Unknown"}
+                      {isLoadingBalance ? "Loading..." : "Not available"}
                     </span>
+                  )}
+                  {balance === null && !isLoadingBalance && (
+                    <span className="text-xs text-muted-foreground">(wallet doesn't support balance)</span>
                   )}
                 </div>
                 <Button
@@ -341,6 +350,7 @@ export function LightningConfig() {
                   size="sm"
                   onClick={loadBalance}
                   disabled={isLoadingBalance}
+                  title="Refresh balance (some wallets don't support this)"
                 >
                   <RefreshCw className={`h-4 w-4 ${isLoadingBalance ? 'animate-spin' : ''}`} />
                 </Button>
@@ -350,14 +360,16 @@ export function LightningConfig() {
                 <Label className="text-sm font-medium">Connection String</Label>
                 <div className="flex items-center space-x-2">
                   <Input
-                    value={`${nwcConfig.connectionString.slice(0, 50)}...`}
+                    value={`${nwcConfig.connectionString.slice(0, 40)}...`}
                     readOnly
-                    className="font-mono text-xs"
+                    className="font-mono text-xs overflow-hidden"
+                    title={nwcConfig.connectionString}
                   />
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleCopy(nwcConfig.connectionString)}
+                    className="shrink-0"
                   >
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
@@ -638,8 +650,8 @@ export function LightningConfig() {
                   
                   <div className="space-y-1">
                     <p>1. Add this to your Claude Desktop config:</p>
-                    <div className="bg-muted p-2 rounded font-mono text-xs relative">
-{`{
+                    <div className="bg-muted p-2 rounded font-mono text-xs relative overflow-x-auto">
+<pre className="whitespace-pre-wrap break-all">{`{
   "mcpServers": {
     "nwc": {
       "command": "npx",
@@ -649,7 +661,7 @@ export function LightningConfig() {
       }
     }
   }
-}`}
+}`}</pre>
                       {isConfigured && (
                         <Button
                           variant="ghost"
@@ -675,8 +687,8 @@ export function LightningConfig() {
 
                   <div className="space-y-1">
                     <p>2. Or run manually:</p>
-                    <div className="bg-muted p-2 rounded font-mono text-xs relative">
-                      NWC_CONNECTION_STRING="{isConfigured ? nwcConfig.connectionString : 'your_connection_string'}" npx @getalby/nwc-mcp-server
+                    <div className="bg-muted p-2 rounded font-mono text-xs relative overflow-x-auto">
+                      <pre className="whitespace-pre-wrap break-all">NWC_CONNECTION_STRING="{isConfigured ? nwcConfig.connectionString : 'your_connection_string'}" npx @getalby/nwc-mcp-server</pre>
                       {isConfigured && (
                         <Button
                           variant="ghost"
