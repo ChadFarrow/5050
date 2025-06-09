@@ -25,7 +25,6 @@ const queryClient = new QueryClient({
 const defaultConfig: AppConfig = {
   theme: "light",
   relayUrl: "wss://relay.nostr.band",
-  nwcDemoMode: false, // Enable real NWC implementation
 };
 
 const presetRelays = [

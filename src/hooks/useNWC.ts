@@ -1,148 +1,172 @@
-import { useCallback, useEffect, useState } from 'react';
-import { type LightningInvoice } from '@/lib/lightning';
+import { useState, useCallback, useMemo } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useToast } from '@/hooks/useToast';
-import { NWCClient } from '@/lib/nwc';
+import { NWCClient, isValidNWCConnection } from '@/lib/nwc';
+import { useToastUtils } from '@/lib/shared-utils';
+import type { LightningInvoice, NWCConnection } from '@/lib/nwc';
 
-interface NWCConfigState {
+export interface NWCConfig {
   connectionString: string;
   enabled: boolean;
+  alias?: string;
+  mcpServer?: {
+    enabled: boolean;
+    serverUrl?: string;
+    apiKey?: string;
+  };
 }
 
+export type { LightningInvoice, NWCConnection };
+
 export function useNWC() {
-  const { toast } = useToast();
-  const [nwcConfig, setNWCConfig] = useLocalStorage<NWCConfigState>('nwc-config', {
-    connectionString: '',
-    enabled: false
-  });
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isWebLNEnabled, setIsWebLNEnabled] = useState(false);
+  const [nwcConfig, setNwcConfig] = useLocalStorage<NWCConfig | null>('nwc-config', null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
+  const toast = useToastUtils();
 
-  // Check WebLN availability and status
-  useEffect(() => {
-    const checkWebLN = async () => {
-      try {
-        if (typeof window.webln !== 'undefined') {
-          try {
-            // Try to enable WebLN
-            await window.webln.enable();
-            setIsWebLNEnabled(true);
-          } catch {
-            console.log('WebLN is available but not enabled');
-            setIsWebLNEnabled(false);
-            toast({
-              title: "WebLN Available",
-              description: "Please unlock your wallet and approve the connection request.",
-              duration: 5000,
-            });
-          }
-        } else {
-          console.log('WebLN is not available');
-          setIsWebLNEnabled(false);
-        }
-      } catch (error) {
-        console.error('Error checking WebLN:', error);
-        setIsWebLNEnabled(false);
-      }
-    };
-
-    checkWebLN();
-  }, [toast]);
-
-  const createInvoice = useCallback(async (amount: number, description: string): Promise<LightningInvoice> => {
-    console.log('Creating invoice with amount:', amount, 'description:', description);
-    console.log('NWC state:', { nwcConfig, isDemoMode, isWebLNEnabled });
-
+  // Create NWC client instance when config is available
+  const nwcClient = useMemo(() => {
+    if (!nwcConfig?.enabled || !nwcConfig.connectionString) {
+      return null;
+    }
+    
     try {
-      // First try WebLN if available
-      if (typeof window.webln !== 'undefined') {
-        try {
-          // Try to enable WebLN
-          await window.webln.enable();
-          setIsWebLNEnabled(true);
+      return new NWCClient(nwcConfig.connectionString, nwcConfig.mcpServer);
+    } catch (error) {
+      console.error('Failed to create NWC client:', error);
+      return null;
+    }
+  }, [nwcConfig]);
 
-          // Create invoice using WebLN
-          const response = await window.webln.makeInvoice({
-            amount: Math.floor(amount / 1000), // Convert msats to sats
-            defaultMemo: description
-          });
-
-          if (!response.paymentRequest) {
-            throw new Error('No payment request in WebLN response');
-          }
-
-          // Generate a random payment hash if not provided
-          const paymentHash = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-
-          return {
-            bolt11: response.paymentRequest,
-            payment_hash: paymentHash,
-            payment_request: response.paymentRequest,
-            amount_msat: amount,
-            description: description,
-            expires_at: Math.floor(Date.now() / 1000) + 3600,
-            checking_id: paymentHash
-          };
-        } catch (weblnError) {
-          console.error('WebLN error:', weblnError);
-          if (weblnError instanceof Error && weblnError.message.includes('User rejected')) {
-            throw new Error('Please approve the connection request in your wallet');
-          }
-          // Fall through to NWC if WebLN fails
-        }
+  const connect = useCallback(async (connectionString: string) => {
+    setIsConnecting(true);
+    try {
+      // Validate the connection string
+      if (!isValidNWCConnection(connectionString)) {
+        throw new Error('Invalid NWC connection string format');
       }
 
-      // Then try NWC if configured
-      if (nwcConfig.connectionString && nwcConfig.enabled) {
-        try {
-          const client = new NWCClient(nwcConfig.connectionString);
-          return await client.makeInvoice(amount, description);
-        } catch (_nwcError) {
-          console.error('NWC error:', _nwcError);
-          // Fall through to demo mode if NWC fails
-        }
-      }
-
-      // Finally, fall back to demo mode
-      console.log('Falling back to demo mode');
-      setIsDemoMode(true);
+      // Test the connection by creating a client and getting wallet info
+      const testClient = new NWCClient(connectionString);
+      const connection = testClient.connectionInfo;
       
-      const mockInvoice: LightningInvoice = {
-        bolt11: `lnbc${amount}n1demo_noconfig_${Date.now()}`,
-        payment_hash: 'mock_payment_hash',
-        payment_request: `lnbc${amount}n1demo_noconfig_${Date.now()}`,
-        amount_msat: amount,
-        description: description,
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        checking_id: 'mock_checking_id'
+      // Try to get wallet info to verify the connection works
+      try {
+        // This will test the connection and get capabilities
+        await testClient.getBalance();
+      } catch (error) {
+        // If balance fails, that's okay - wallet might not support it
+        // The connection validation during client creation is sufficient
+        console.log('Balance check failed (this is okay):', error);
+      }
+      
+      const config: NWCConfig = {
+        connectionString,
+        enabled: true,
+        alias: `Wallet ${connection.walletPubkey.slice(0, 8)}...`,
+        mcpServer: {
+          enabled: false, // Start with MCP disabled by default
+          serverUrl: undefined,
+          apiKey: undefined,
+        },
       };
 
-      toast({
-        title: "Demo Mode",
-        description: "Using a demo invoice. Configure a real NWC wallet for actual payments.",
-        duration: 5000,
-      });
-
-      return mockInvoice;
+      setNwcConfig(config);
+      toast.lightning.connected();
+      return true;
     } catch (error) {
-      console.error('Error creating invoice:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create invoice",
-        variant: "destructive",
-        duration: 5000,
-      });
+      console.error('NWC connection failed:', error);
+      toast.error("Connection Failed", error instanceof Error ? error.message : "Failed to connect to wallet");
+      return false;
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [setNwcConfig, toast]);
+
+  const disconnect = useCallback(() => {
+    setNwcConfig(null);
+    toast.lightning.disconnected();
+  }, [setNwcConfig, toast]);
+
+  const createInvoice = useCallback(async (amount: number, description: string): Promise<LightningInvoice> => {
+    if (!nwcClient) {
+      throw new Error('NWC not configured');
+    }
+
+    setIsCreatingInvoice(true);
+    try {
+      const invoice = await nwcClient.makeInvoice(amount, description);
+      toast.lightning.invoiceCreated(amount);
+      return invoice;
+    } catch (error) {
+      console.error('Failed to create invoice:', error);
+      toast.error("Invoice Creation Failed", error instanceof Error ? error.message : "Failed to create invoice");
+      throw error;
+    } finally {
+      setIsCreatingInvoice(false);
+    }
+  }, [nwcClient, toast]);
+
+  const isConfigured = Boolean(nwcConfig?.enabled && nwcConfig.connectionString);
+
+  // MCP Server Configuration
+  const configureMCPServer = useCallback((mcpConfig: { enabled: boolean; serverUrl?: string; apiKey?: string }) => {
+    if (!nwcConfig) {
+      toast.error("Configuration Error", "NWC must be configured before setting up MCP server");
+      return;
+    }
+
+    const updatedConfig: NWCConfig = { ...nwcConfig, mcpServer: mcpConfig };
+    setNwcConfig(updatedConfig);
+    
+    toast.success(
+      mcpConfig.enabled ? "MCP Server Enabled" : "MCP Server Disabled",
+      mcpConfig.enabled ? 
+        "NWC requests will use MCP server when available" : 
+        "NWC requests will use direct connection"
+    );
+  }, [nwcConfig, setNwcConfig, toast]);
+
+  // Additional methods for wallet operations
+  const payInvoice = useCallback(async (paymentRequest: string) => {
+    if (!nwcClient) {
+      throw new Error('NWC not configured');
+    }
+
+    try {
+      const result = await nwcClient.payInvoice(paymentRequest);
+      toast.lightning.paymentSent();
+      return result;
+    } catch (error) {
+      console.error('Failed to pay invoice:', error);
+      toast.lightning.paymentFailed(error instanceof Error ? error.message : undefined);
       throw error;
     }
-  }, [nwcConfig, isDemoMode, isWebLNEnabled, toast]);
+  }, [nwcClient, toast]);
+
+  const getBalance = useCallback(async () => {
+    if (!nwcClient) {
+      throw new Error('NWC not configured');
+    }
+
+    try {
+      return await nwcClient.getBalance();
+    } catch (error) {
+      console.error('Failed to get balance:', error);
+      throw error;
+    }
+  }, [nwcClient]);
 
   return {
+    nwcConfig: nwcConfig || { connectionString: '', enabled: false },
+    isConfigured,
+    isConnecting,
+    isCreatingInvoice,
+    connect,
+    disconnect,
     createInvoice,
-    isDemoMode,
-    isWebLNEnabled,
-    nwcConfig,
-    setNWCConfig
+    payInvoice,
+    getBalance,
+    configureMCPServer,
+    nwcClient,
   };
 }

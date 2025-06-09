@@ -19,7 +19,6 @@ export interface Fundraiser {
   isActive: boolean;
   createdAt: number;
   event: NostrEvent;
-  tags: string[][]; // Raw tags from the event for accessing NWC and other data
 }
 
 // Keep Campaign as an alias for backward compatibility
@@ -67,7 +66,6 @@ function eventToFundraiser(event: NostrEvent): Fundraiser {
     isActive: endDate > now,
     createdAt: event.created_at,
     event,
-    tags: event.tags,
   };
 }
 

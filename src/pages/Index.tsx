@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Trophy, Zap, Users, DollarSign } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,6 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useFundraisers } from "@/hooks/useCampaigns";
 import { CampaignCard } from "@/components/CampaignCard";
 import { CreateCampaignDialog } from "@/components/CreateCampaignDialog";
-import { LightningConfig } from "@/components/LightningConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RelaySelector } from "@/components/RelaySelector";
 
@@ -40,20 +40,22 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
+                <Link to="/demo">View Demo</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="sm:hidden" asChild>
+                <Link to="/demo">Demo</Link>
+              </Button>
               <div className="hidden sm:block">
                 <RelaySelector />
-              </div>
-              <div className="hidden sm:block">
-                <LightningConfig />
               </div>
               <LoginArea className="max-w-32 sm:max-w-60" />
             </div>
           </div>
           
-          {/* Mobile controls */}
-          <div className="sm:hidden mt-3 pt-3 border-t space-y-2">
+          {/* Mobile relay selector */}
+          <div className="sm:hidden mt-3 pt-3 border-t">
             <RelaySelector className="w-full" />
-            <LightningConfig />
           </div>
         </div>
       </header>
@@ -278,7 +280,6 @@ const Index = () => {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>• Nostr Protocol</li>
                 <li>• Lightning Network</li>
-                <li>• NIP-47 Wallet Connect</li>
                 <li>• React & TypeScript</li>
                 <li>• Open Source</li>
               </ul>
