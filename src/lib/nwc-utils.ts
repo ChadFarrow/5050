@@ -26,7 +26,7 @@ export function parseConnectionString(connectionString: string): NWCConnection {
 
     const walletPubkey = url.hostname;
     if (!walletPubkey || walletPubkey.length !== 64) {
-      throw new Error('Invalid wallet pubkey');
+      throw new Error(`Invalid wallet pubkey: expected 64 characters, got ${walletPubkey.length}`);
     }
 
     const relayUrl = url.searchParams.get('relay');
@@ -36,7 +36,7 @@ export function parseConnectionString(connectionString: string): NWCConnection {
 
     const secret = url.searchParams.get('secret');
     if (!secret || secret.length !== 64) {
-      throw new Error('Invalid secret parameter');
+      throw new Error(`Invalid secret parameter: expected 64 characters, got ${secret?.length || 0}`);
     }
 
     const lud16 = url.searchParams.get('lud16') || undefined;
@@ -48,6 +48,7 @@ export function parseConnectionString(connectionString: string): NWCConnection {
       lud16,
     };
   } catch (error) {
+    console.error('Connection string parsing failed:', error);
     throw new Error(`Invalid NWC connection string: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

@@ -86,14 +86,14 @@ export function LightningConfig() {
     if (isConfigured) {
       loadBalance();
       // Initialize MCP settings from config
-      setMcpServerUrl(nwcConfig.mcpServer?.serverUrl || 'https://mcp.getalby.com/mcp');
+      setMcpServerUrl(nwcConfig.mcpServer?.serverUrl || 'http://localhost:3000');
       setMcpApiKey(nwcConfig.mcpServer?.apiKey || '');
       
       // Auto-migrate existing configs that don't have MCP settings
       if (!nwcConfig.mcpServer?.serverUrl) {
         configureMCPServer({
-          enabled: true,
-          serverUrl: 'https://mcp.getalby.com/mcp',
+          enabled: false, // Default to disabled due to CORS issues with hosted server
+          serverUrl: 'http://localhost:3000',
           apiKey: undefined,
         });
       }
@@ -453,13 +453,18 @@ export function LightningConfig() {
                                   <div>❌ Connection string format is invalid. Make sure it starts with "nostr+walletconnect://"</div>
                                 )}
                                 {!diagnostics.relayConnected && (
-                                  <div>❌ Cannot connect to NWC relay. Try: 1) Check wallet is online 2) Regenerate connection string 3) Check relay in wallet settings</div>
+                                  <div>❌ Cannot connect to NWC relay. Try: 1) Check wallet is online 2) Regenerate connection string 3) Check relay in wallet settings 4) Check browser console for detailed errors</div>
                                 )}
                                 {!diagnostics.invoiceCapable && (
                                   <div>❌ Wallet cannot create invoices. Enable "make_invoice" permission in your wallet's NWC settings</div>
                                 )}
                                 {nwcConfig.mcpServer?.enabled && !diagnostics.mcpServerReachable && (
                                   <div>❌ MCP server unreachable. Try disabling MCP in Advanced Settings or check server URL</div>
+                                )}
+                                {(!diagnostics.relayConnected || !diagnostics.invoiceCapable) && (
+                                  <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950 rounded text-xs">
+                                    💡 <strong>Quick Fix:</strong> Try disabling MCP server temporarily. Go to Advanced Settings and turn off "MCP Server" to use direct NWC connection.
+                                  </div>
                                 )}
                               </div>
                             </AlertDescription>
@@ -510,7 +515,7 @@ export function LightningConfig() {
                           <Label htmlFor="mcp-server-url">Server URL</Label>
                           <Input
                             id="mcp-server-url"
-                            placeholder="https://mcp.getalby.com/mcp"
+                            placeholder="http://localhost:3000"
                             value={mcpServerUrl}
                             onChange={(e) => setMcpServerUrl(e.target.value)}
                             className="text-sm"
@@ -621,12 +626,15 @@ export function LightningConfig() {
             </div>
 
             <div className="mt-4 space-y-2">
-              <h5 className="font-medium text-sm">MCP Server (Enabled by Default)</h5>
+              <h5 className="font-medium text-sm">Local MCP Server Setup (Recommended)</h5>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p>This app uses Alby's hosted MCP server (https://mcp.getalby.com/mcp) for enhanced performance and reliability.</p>
+                <div className="p-2 bg-yellow-50 dark:bg-yellow-950 rounded">
+                  <p className="font-medium text-yellow-800 dark:text-yellow-200">⚠️ Browser CORS Policy Issue</p>
+                  <p className="text-yellow-700 dark:text-yellow-300">Alby's hosted MCP server blocks browser requests. Use the local MCP server for NWC connections.</p>
+                </div>
                 
                 <div className="mt-3 space-y-2">
-                  <p className="font-medium">To use a local MCP server instead:</p>
+                  <p className="font-medium">Setup Local MCP Server:</p>
                   
                   <div className="space-y-1">
                     <p>1. Add this to your Claude Desktop config:</p>
@@ -682,7 +690,12 @@ export function LightningConfig() {
                     </div>
                   </div>
 
-                  <p>3. Then change the server URL in Advanced Settings to: http://localhost:3000</p>
+                  <p>3. Enable MCP in Advanced Settings with server URL: http://localhost:3000</p>
+                  
+                  <div className="mt-3 p-2 bg-green-50 dark:bg-green-950 rounded">
+                    <p className="font-medium text-green-800 dark:text-green-200">✅ Alternative: Direct NWC</p>
+                    <p className="text-green-700 dark:text-green-300">If MCP setup is complex, you can use direct NWC connection (keep MCP disabled). This connects directly to your wallet's relay.</p>
+                  </div>
                 </div>
               </div>
             </div>

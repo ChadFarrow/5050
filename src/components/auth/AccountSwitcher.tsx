@@ -96,7 +96,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
       </DropdownMenu>
 
       <Dialog open={lightningDialogOpen} onOpenChange={setLightningDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <Zap className="h-5 w-5 mr-2" />
