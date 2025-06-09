@@ -88,12 +88,21 @@ export function LightningConfig() {
       // Initialize MCP settings from config
       setMcpServerUrl(nwcConfig.mcpServer?.serverUrl || 'https://mcp.getalby.com/mcp');
       setMcpApiKey(nwcConfig.mcpServer?.apiKey || '');
+      
+      // Auto-migrate existing configs that don't have MCP settings
+      if (!nwcConfig.mcpServer?.serverUrl) {
+        configureMCPServer({
+          enabled: true,
+          serverUrl: 'https://mcp.getalby.com/mcp',
+          apiKey: undefined,
+        });
+      }
     } else {
       setBalance(null);
       setMcpServerUrl('');
       setMcpApiKey('');
     }
-  }, [isConfigured, loadBalance, nwcConfig]);
+  }, [isConfigured, loadBalance, nwcConfig, configureMCPServer]);
 
   const handleMCPToggle = (enabled: boolean) => {
     configureMCPServer({
@@ -200,12 +209,74 @@ export function LightningConfig() {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000);
           
-          const response = await fetch(mcpServerUrl + '/health', { 
-            method: 'GET',
-            signal: controller.signal
-          });
+          let serverReachable = false;
+          
+          if (mcpServerUrl.includes('mcp.getalby.com')) {
+            // Test Alby hosted MCP server
+            try {
+              const response = await fetch(mcpServerUrl, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: 'health-check',
+                  method: 'nwc.get_info',
+                  params: { connectionString: 'test' }
+                })
+              });
+              // Even if request fails, if we get a response, server is reachable
+              serverReachable = response.status !== 0;
+              console.log('Alby MCP server response status:', response.status);
+            } catch (error) {
+              console.log('Alby MCP server test failed:', error);
+              serverReachable = false;
+            }
+          } else {
+            // Test local MCP server - try multiple endpoints
+            const endpoints = ['/health', '/status', '/ping', '/', '/rpc'];
+            
+            for (const endpoint of endpoints) {
+              try {
+                const response = await fetch(mcpServerUrl + endpoint, { 
+                  method: 'GET',
+                  signal: controller.signal
+                });
+                if (response.ok || response.status === 404 || response.status === 405) {
+                  serverReachable = true;
+                  console.log(`Local MCP server reachable at ${mcpServerUrl + endpoint} (status: ${response.status})`);
+                  break;
+                }
+              } catch {
+                // Continue to next endpoint
+                continue;
+              }
+            }
+            
+            // If GET requests failed, try a JSON-RPC POST request
+            if (!serverReachable) {
+              try {
+                const response = await fetch(mcpServerUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  signal: controller.signal,
+                  body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 'health-check',
+                    method: 'tools/list',
+                    params: {}
+                  })
+                });
+                serverReachable = response.status !== 0;
+                console.log('Local MCP server JSON-RPC response status:', response.status);
+              } catch (error) {
+                console.log('Local MCP server JSON-RPC test failed:', error);
+              }
+            }
+          }
+          
           clearTimeout(timeoutId);
-          results.mcpServerReachable = response.ok;
+          results.mcpServerReachable = serverReachable;
         } catch (error) {
           console.log('MCP server test failed:', error);
           results.mcpServerReachable = false;
@@ -377,10 +448,20 @@ export function LightningConfig() {
                           <Alert className="mt-3">
                             <AlertCircle className="h-4 w-4" />
                             <AlertDescription className="text-xs">
-                              {!diagnostics.connectionValid && "Connection string format is invalid. "}
-                              {!diagnostics.relayConnected && "Cannot connect to NWC relay. Check your wallet settings. "}
-                              {!diagnostics.invoiceCapable && "Wallet cannot create invoices. Check permissions. "}
-                              {nwcConfig.mcpServer?.enabled && !diagnostics.mcpServerReachable && "MCP server is unreachable. "}
+                              <div className="space-y-1">
+                                {!diagnostics.connectionValid && (
+                                  <div>❌ Connection string format is invalid. Make sure it starts with "nostr+walletconnect://"</div>
+                                )}
+                                {!diagnostics.relayConnected && (
+                                  <div>❌ Cannot connect to NWC relay. Try: 1) Check wallet is online 2) Regenerate connection string 3) Check relay in wallet settings</div>
+                                )}
+                                {!diagnostics.invoiceCapable && (
+                                  <div>❌ Wallet cannot create invoices. Enable "make_invoice" permission in your wallet's NWC settings</div>
+                                )}
+                                {nwcConfig.mcpServer?.enabled && !diagnostics.mcpServerReachable && (
+                                  <div>❌ MCP server unreachable. Try disabling MCP in Advanced Settings or check server URL</div>
+                                )}
+                              </div>
                             </AlertDescription>
                           </Alert>
                         )}
@@ -540,13 +621,69 @@ export function LightningConfig() {
             </div>
 
             <div className="mt-4 space-y-2">
-              <h5 className="font-medium text-sm">Optional: MCP Server Setup</h5>
+              <h5 className="font-medium text-sm">MCP Server (Enabled by Default)</h5>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p>For enhanced performance, you can run the Alby NWC MCP server:</p>
-                <div className="bg-muted p-2 rounded font-mono text-xs">
-                  npx @getalby/nwc-mcp-server
+                <p>This app uses Alby's hosted MCP server (https://mcp.getalby.com/mcp) for enhanced performance and reliability.</p>
+                
+                <div className="mt-3 space-y-2">
+                  <p className="font-medium">To use a local MCP server instead:</p>
+                  
+                  <div className="space-y-1">
+                    <p>1. Add this to your Claude Desktop config:</p>
+                    <div className="bg-muted p-2 rounded font-mono text-xs relative">
+{`{
+  "mcpServers": {
+    "nwc": {
+      "command": "npx",
+      "args": ["-y", "@getalby/nwc-mcp-server"],
+      "env": {
+        "NWC_CONNECTION_STRING": "${isConfigured ? nwcConfig.connectionString : 'YOUR_NWC_CONNECTION_STRING_HERE'}"
+      }
+    }
+  }
+}`}
+                      {isConfigured && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                          onClick={() => handleCopy(`{
+  "mcpServers": {
+    "nwc": {
+      "command": "npx",
+      "args": ["-y", "@getalby/nwc-mcp-server"],
+      "env": {
+        "NWC_CONNECTION_STRING": "${nwcConfig.connectionString}"
+      }
+    }
+  }
+}`)}
+                        >
+                          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p>2. Or run manually:</p>
+                    <div className="bg-muted p-2 rounded font-mono text-xs relative">
+                      NWC_CONNECTION_STRING="{isConfigured ? nwcConfig.connectionString : 'your_connection_string'}" npx @getalby/nwc-mcp-server
+                      {isConfigured && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                          onClick={() => handleCopy(`NWC_CONNECTION_STRING="${nwcConfig.connectionString}" npx @getalby/nwc-mcp-server`)}
+                        >
+                          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <p>3. Then change the server URL in Advanced Settings to: http://localhost:3000</p>
                 </div>
-                <p>Then enable MCP in Advanced Settings with server URL: http://localhost:3000</p>
               </div>
             </div>
           </div>

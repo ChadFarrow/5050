@@ -51,12 +51,26 @@ export function useNWC() {
       
       // Try to get wallet info to verify the connection works
       try {
-        // This will test the connection and get capabilities
-        await testClient.getBalance();
-      } catch (error) {
-        // If balance fails, that's okay - wallet might not support it
-        // The connection validation during client creation is sufficient
-        console.log('Balance check failed (this is okay):', error);
+        // Start with getInfo which is more likely to work
+        await testClient.getInfo();
+        console.log('Connection test: getInfo succeeded');
+      } catch (infoError) {
+        console.log('Connection test: getInfo failed, trying balance...', infoError);
+        try {
+          // Fallback to balance check
+          await testClient.getBalance();
+          console.log('Connection test: getBalance succeeded');
+        } catch (balanceError) {
+          // If both fail, try a small invoice creation
+          console.log('Connection test: getBalance failed, trying invoice...', balanceError);
+          try {
+            await testClient.makeInvoice(1000, 'Connection test');
+            console.log('Connection test: makeInvoice succeeded');
+          } catch (invoiceError) {
+            console.log('Connection test: All methods failed', invoiceError);
+            throw new Error('Unable to verify wallet connection. Check your wallet permissions and relay connectivity.');
+          }
+        }
       }
       
       const config: NWCConfig = {
