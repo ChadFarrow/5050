@@ -135,73 +135,138 @@ export class NWCTransport {
     }
 
     console.log('Sending request to local MCP server:', serverUrl);
-    const requestBody = {
-      jsonrpc: '2.0',
-      id: request.id || Date.now().toString(),
-      method: 'tools/call',
-      params: {
-        name: 'nwc',
-        arguments: {
-          method: request.method,
+    
+    // Try different MCP server communication patterns
+    const attempts = [
+      // Attempt 1: Standard MCP tools/call format
+      {
+        method: 'tools/call',
+        params: {
+          name: 'nwc',
+          arguments: {
+            method: request.method,
+            ...request.params
+          }
+        }
+      },
+      // Attempt 2: Direct method call format
+      {
+        method: request.method,
+        params: request.params
+      },
+      // Attempt 3: NWC-specific method format
+      {
+        method: `nwc.${request.method}`,
+        params: {
+          connectionString: `nostr+walletconnect://${this.connection.walletPubkey}?relay=${encodeURIComponent(this.connection.relayUrl)}&secret=${this.connection.secret}${this.connection.lud16 ? `&lud16=${this.connection.lud16}` : ''}`,
           ...request.params
         }
       }
-    };
-    console.log('Local MCP request body:', requestBody);
+    ];
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-    try {
-      const response = await fetch(serverUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.mcpConfig!.apiKey && { 'Authorization': `Bearer ${this.mcpConfig!.apiKey}` }),
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal
-      });
+    for (let i = 0; i < attempts.length; i++) {
+      const attempt = attempts[i];
+      const requestBody = {
+        jsonrpc: '2.0',
+        id: request.id || Date.now().toString(),
+        method: attempt.method,
+        params: attempt.params
+      };
       
-      clearTimeout(timeoutId);
-      console.log('Local MCP server response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Local MCP server error response:', errorText);
-        throw new Error(`Local MCP server error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
+      console.log(`Local MCP attempt ${i + 1}:`, requestBody);
 
-      const data = await response.json();
-      console.log('Local MCP server response data:', data);
-      
-      if (data.error) {
-        console.error('Local MCP error:', data.error);
-        throw new Error(`Local MCP error: ${data.error.message || 'Unknown error'}`);
-      }
-
-      // Parse the MCP tools response
-      const toolResult = data.result?.content?.[0]?.text;
-      if (!toolResult) {
-        throw new Error('Invalid MCP response format');
-      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
-        const nwcResult = JSON.parse(toolResult);
+        const response = await fetch(serverUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.mcpConfig!.apiKey && { 'Authorization': `Bearer ${this.mcpConfig!.apiKey}` }),
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        console.log(`Local MCP attempt ${i + 1} response status:`, response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Local MCP attempt ${i + 1} error response:`, errorText);
+          
+          // If this is the last attempt, throw the error
+          if (i === attempts.length - 1) {
+            throw new Error(`Local MCP server error: ${response.status} ${response.statusText} - ${errorText}`);
+          }
+          continue; // Try next attempt
+        }
+
+        const data = await response.json();
+        console.log(`Local MCP attempt ${i + 1} response data:`, data);
+        
+        if (data.error) {
+          console.error(`Local MCP attempt ${i + 1} error:`, data.error);
+          
+          // If this is the last attempt, throw the error
+          if (i === attempts.length - 1) {
+            throw new Error(`Local MCP error: ${data.error.message || 'Unknown error'}`);
+          }
+          continue; // Try next attempt
+        }
+
+        // Handle different response formats
+        let nwcResult;
+        
+        if (data.result?.content?.[0]?.text) {
+          // MCP tools response format
+          try {
+            nwcResult = JSON.parse(data.result.content[0].text);
+          } catch (parseError) {
+            console.warn(`Failed to parse MCP tool result on attempt ${i + 1}:`, parseError);
+            if (i === attempts.length - 1) {
+              throw new Error(`Failed to parse MCP tool result: ${parseError}`);
+            }
+            continue;
+          }
+        } else if (data.result) {
+          // Direct result format
+          nwcResult = data.result;
+        } else {
+          console.warn(`Invalid MCP response format on attempt ${i + 1}`);
+          if (i === attempts.length - 1) {
+            throw new Error('Invalid MCP response format');
+          }
+          continue;
+        }
+
         return {
           result_type: request.method as NWCMethod,
           result: nwcResult
         };
-      } catch (parseError) {
-        throw new Error(`Failed to parse MCP tool result: ${parseError}`);
+
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error(`Local MCP attempt ${i + 1} timed out`);
+          if (i === attempts.length - 1) {
+            throw new Error('Local MCP server request timed out');
+          }
+          continue;
+        }
+        
+        // If this is the last attempt, throw the error
+        if (i === attempts.length - 1) {
+          throw error;
+        }
+        
+        console.warn(`Local MCP attempt ${i + 1} failed, trying next approach:`, error);
+        continue;
       }
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Local MCP server request timed out');
-      }
-      throw error;
     }
+
+    throw new Error('All MCP server communication attempts failed');
   }
 
   private async sendDirectRequest(request: { method: string; params: Record<string, unknown> }): Promise<NWCResponse> {
