@@ -37,6 +37,21 @@ export function AppProvider(props: AppProviderProps) {
   // Apply theme effects to document
   useApplyTheme(config.theme);
 
+  // Load Bitcoin Connect web components
+  useEffect(() => {
+    const loadBitcoinConnect = async () => {
+      try {
+        // Import Bitcoin Connect components
+        await import('@getalby/bitcoin-connect');
+        console.log('Bitcoin Connect loaded');
+      } catch (error) {
+        console.warn('Failed to load Bitcoin Connect:', error);
+      }
+    };
+
+    loadBitcoinConnect();
+  }, []);
+
   return (
     <AppContext.Provider value={appContextValue}>
       {children}

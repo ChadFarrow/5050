@@ -13,6 +13,7 @@
     "mcp:test": "node scripts/test-mcp-server.js"
   },
   "dependencies": {
+    "@getalby/bitcoin-connect": "^3.8.0",
     "@getalby/nwc-mcp-server": "^1.1.0",
     "@getalby/sdk": "^5.1.0",
     "@hookform/resolvers": "^3.9.0",
