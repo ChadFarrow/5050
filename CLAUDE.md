@@ -48,35 +48,27 @@ This is a fundraising platform with three main business domains:
 
 ## Lightning Network Integration
 
-The project includes comprehensive Lightning Network integration with multiple wallet connection options:
+The project uses Bitcoin Connect for a modern, user-friendly Lightning wallet connection experience:
 
 ### Bitcoin Connect Integration
 - **`@getalby/bitcoin-connect`**: Modern web components library for Lightning wallet connections
-- **`useBitcoinConnect` Hook**: React hook for WebLN provider integration
-- **`useWallet` Hook**: Unified interface supporting both Bitcoin Connect and manual NWC
+- **`useBitcoinConnect` Hook**: React hook for WebLN provider integration  
+- **`useWallet` Hook**: Simplified interface using Bitcoin Connect
 - **Web Components**: Native `<bc-button>` component for easy wallet selection
 - **Multi-Wallet Support**: Alby, Mutiny, LNC, and other WebLN-compatible wallets
 
-### Core NWC Implementation
-- **`useNWC` Hook**: Full NIP-47 compliant implementation with WebSocket relay communication
-- **`NWCClient` Class**: Direct NWC protocol implementation with encrypted communication
+### Core Features
 - **Components**: `LightningInvoice` and `LightningConfig` provide complete wallet management UI
 - **Real Lightning Payments**: Production-ready invoice creation and payment verification
-- **Fallback Support**: Manual NWC connection strings for advanced users
-
-### MCP Server Integration
-- **Alby NWC MCP Server**: Optional integration with https://github.com/getalby/nwc-mcp-server
-- **Fallback Logic**: Automatically falls back to direct NWC if MCP server unavailable
-- **Enhanced Performance**: MCP server can improve reliability and reduce WebSocket overhead
-- **Configuration**: MCP settings available in Advanced Settings with server URL and optional API key
+- **Direct Payments**: Users can pay invoices directly from the interface without copy/paste
+- **WebLN Integration**: Leverages the WebLN standard for seamless wallet interactions
 
 ### Setup Instructions
-1. **Bitcoin Connect** (recommended): One-click connection with multiple wallet options
-2. **Manual NWC**: Connect any NIP-47 compatible wallet (Alby, Mutiny, etc.) via connection string
-3. **MCP Server** (optional): Run `npx @getalby/nwc-mcp-server` and enable in Advanced Settings
-4. **Ticket Purchases**: Real Lightning invoices created via unified `useWallet()` hook
+1. **Bitcoin Connect**: One-click connection with multiple wallet options
+2. **Ticket Purchases**: Real Lightning invoices created and payable directly in the UI
+3. **Wallet Support**: Works with any WebLN-compatible wallet
 
-The implementation follows NIP-47 specification completely and supports all required methods: `make_invoice`, `pay_invoice`, `get_balance`, and `get_info`. Bitcoin Connect provides a modern, user-friendly interface while maintaining full compatibility with existing NWC workflows.
+The implementation provides a streamlined Lightning experience focused on ease of use and broad wallet compatibility through the WebLN standard.
 
 ## Custom NIP Implementation
 

@@ -95,12 +95,6 @@ export const createFormValidators = () => ({
     return date;
   },
   
-  connectionString: (value: string) => {
-    if (!value.startsWith('nostr+walletconnect://')) {
-      throw new Error('Invalid NWC connection string format');
-    }
-    return value;
-  }
 });
 
 // Common Loading States
