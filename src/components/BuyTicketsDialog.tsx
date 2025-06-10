@@ -19,6 +19,7 @@ import { LightningInvoice } from "@/components/LightningInvoice";
 import { LightningConfig } from "@/components/LightningConfig";
 import type { Campaign } from "@/hooks/useCampaigns";
 import type { LightningInvoice as LightningInvoiceType } from "@/types/lightning";
+import { useQueryClient } from '@tanstack/react-query';
 
 // Utility function to extract payment hash from bolt11 invoice
 function extractPaymentHashFromBolt11(bolt11: string): string | null {
@@ -49,6 +50,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   const wallet = useWallet();
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const toast = useToastUtils();
+  const queryClient = useQueryClient();
   
   const [ticketCount, setTicketCount] = useState("1");
   const [message, setMessage] = useState("");
@@ -158,6 +160,11 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         content: message.trim(),
         tags,
       });
+
+      // Invalidate fundraisers query so the list updates immediately
+      queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
+      // Invalidate campaign stats for this fundraiser so stats update immediately
+      queryClient.invalidateQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
 
       toast.campaign.ticketsPurchased(tickets, formatSats(totalCost));
 

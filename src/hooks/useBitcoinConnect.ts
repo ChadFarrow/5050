@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { 
   disconnect as bitcoinConnectDisconnect,
   closeModal as bitcoinConnectCloseModal,
-  isConnected as bitcoinConnectIsConnected,
   requestProvider,
   onConnected,
   onDisconnected,
@@ -150,32 +149,20 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
       console.error('❌ Failed to register onConnecting listener:', error);
     }
 
-    // Check initial connection state
+    // Check initial connection state based solely on WebLN provider
     const checkInitialState = () => {
       try {
-        const isCurrentlyConnected = bitcoinConnectIsConnected();
+        const connected = typeof window.webln?.makeInvoice === 'function';
         console.log('Bitcoin Connect initial state check:', {
-          bitcoinConnectConnected: isCurrentlyConnected,
           webln: !!window.webln,
-          weblnEnabled: typeof window.webln?.makeInvoice === 'function',
+          weblnEnabled: connected,
           makeInvoice: !!window.webln?.makeInvoice
         });
-        
-        // Only consider connected if both Bitcoin Connect says connected AND WebLN makeInvoice is available
-        if (isCurrentlyConnected && typeof window.webln?.makeInvoice === 'function') {
-          setState(prev => ({
-            ...prev,
-            isConnected: true,
-            isConnecting: false,
-          }));
-        } else if (!isCurrentlyConnected) {
-          // If Bitcoin Connect says not connected, clear state
-          setState(prev => ({
-            ...prev,
-            isConnected: false,
-            isConnecting: false,
-          }));
-        }
+        setState(prev => ({
+          ...prev,
+          isConnected: connected,
+          isConnecting: false,
+        }));
       } catch (error) {
         console.warn('Failed to check initial Bitcoin Connect state:', error);
       }
@@ -183,10 +170,10 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
 
     // Delay initial check to allow Bitcoin Connect to initialize
     setTimeout(checkInitialState, 100);
-    
+
     // Also check periodically in case connection state changes
     const interval = setInterval(checkInitialState, 2000);
-    
+
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
       clearInterval(interval);
