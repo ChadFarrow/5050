@@ -41,18 +41,40 @@ export function AppProvider(props: AppProviderProps) {
   useEffect(() => {
     const loadBitcoinConnect = async () => {
       try {
-        // Import Bitcoin Connect components and store
-        const bitcoinConnect = await import('@getalby/bitcoin-connect');
+        // Import Bitcoin Connect to register web components
+        await import('@getalby/bitcoin-connect');
         
-        // Expose the store to window for our hook to access
-        // Bitcoin Connect exports its store, try to access it
-        const storeModule = bitcoinConnect as { default?: unknown; store?: unknown };
-        const store = storeModule.default || storeModule.store;
-        if (store) {
-          (globalThis as { bitcoinConnectStore?: unknown }).bitcoinConnectStore = store;
-        }
+        // Initialize Bitcoin Connect with default config
+        const { init } = await import('@getalby/bitcoin-connect');
+        init({
+          appName: 'PodRaffle',
+          showBalance: true,
+        });
         
-        console.log('Bitcoin Connect loaded');
+        console.log('Bitcoin Connect loaded and initialized');
+        
+        // Add runtime modal fixes
+        setTimeout(() => {
+          const style = document.createElement('style');
+          style.textContent = `
+            bc-modal {
+              z-index: 9999 !important;
+            }
+            bc-modal::part(overlay) {
+              pointer-events: auto !important;
+              z-index: 9999 !important;
+            }
+            bc-modal::part(modal) {
+              pointer-events: auto !important;
+              z-index: 10000 !important;
+            }
+            bc-modal * {
+              pointer-events: auto !important;
+            }
+          `;
+          document.head.appendChild(style);
+          console.log('Applied Bitcoin Connect modal fixes');
+        }, 500);
       } catch (error) {
         console.warn('Failed to load Bitcoin Connect:', error);
       }

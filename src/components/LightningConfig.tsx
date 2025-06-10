@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { Zap, Wallet, ExternalLink, AlertCircle, RefreshCw, Plug, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/useToast';
 export function LightningConfig() {
   const wallet = useWallet();
   const { toast } = useToast();
-  const bcButtonRef = useRef<HTMLDivElement>(null);
 
   const handleRefreshBalance = async () => {
     try {
@@ -26,33 +25,6 @@ export function LightningConfig() {
         variant: "destructive",
       });
     }
-  };
-
-  // Programmatic close function for Bitcoin Connect modal
-  const closeBitcoinConnectModal = () => {
-    // Try to find the <bc-button> element
-    const bcButton = bcButtonRef.current?.querySelector('bc-button');
-    if (bcButton) {
-      // Try calling a close method if it exists
-      if (typeof (bcButton as any).close === 'function') {
-        (bcButton as any).close();
-        return;
-      }
-      // Try clicking the close button inside the shadow DOM
-      const shadowRoot = (bcButton as any).shadowRoot;
-      if (shadowRoot) {
-        const closeBtn = shadowRoot.querySelector('button[aria-label="Close"],button[title="Close"],button[aria-label="close"],button[title="close"]');
-        if (closeBtn) {
-          (closeBtn as HTMLButtonElement).click();
-          return;
-        }
-      }
-    }
-    toast({
-      title: 'Modal Close Failed',
-      description: 'Could not programmatically close the Bitcoin Connect modal.',
-      variant: 'destructive',
-    });
   };
 
   return (
@@ -73,12 +45,12 @@ export function LightningConfig() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Wallet className="h-4 w-4 text-green-600" />
-                  <span className="font-medium">Bitcoin Connect - Connected</span>
+                  <span className="font-medium">Lightning Wallet Connected</span>
                   {wallet.nodeInfo?.alias && (
                     <Badge variant="secondary">{wallet.nodeInfo.alias}</Badge>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => { wallet.disconnect(); wallet.closeModal(); }}>
+                <Button variant="outline" size="sm" onClick={wallet.disconnect}>
                   Disconnect
                 </Button>
               </div>
@@ -118,21 +90,17 @@ export function LightningConfig() {
               </Alert>
 
               {/* Bitcoin Connect Web Component */}
-              <div className="space-y-4" ref={bcButtonRef}>
+              <div className="space-y-4">
                 <div 
                   dangerouslySetInnerHTML={{
                     __html: '<bc-button class="w-full">Connect Lightning Wallet</bc-button>'
                   }}
                 />
-                {/* Debug button to test programmatic close */}
-                <Button variant="outline" size="sm" onClick={closeBitcoinConnectModal}>
-                  Debug: Close Bitcoin Connect Modal
-                </Button>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <Button 
                     onClick={() => {
-                      // Use a direct WebLN connection as fallback
+                      // Fallback WebLN connection
                       if (window.webln) {
                         window.webln.enable();
                       }
@@ -147,9 +115,11 @@ export function LightningConfig() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={wallet.closeModal}
-                    title="Close any open wallet modals"
-                    className="ml-2"
+                    onClick={() => {
+                      console.log('Manual close modal button clicked');
+                      wallet.closeModal();
+                    }}
+                    title="Close wallet modal"
                   >
                     <X className="h-4 w-4" />
                   </Button>
