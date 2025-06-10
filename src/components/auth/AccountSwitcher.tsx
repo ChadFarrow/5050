@@ -16,7 +16,7 @@ import { genUserName } from '@/lib/genUserName';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LightningConfig } from '@/components/LightningConfig';
-import { useNWC } from '@/hooks/useNWC';
+import { useWallet } from '@/hooks/useWallet';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;
@@ -24,7 +24,7 @@ interface AccountSwitcherProps {
 
 export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   const { currentUser, otherUsers, setLogin, removeLogin } = useLoggedInAccounts();
-  const { isConfigured } = useNWC();
+  const { isConnected } = useWallet();
   const [lightningDialogOpen, setLightningDialogOpen] = useState(false);
 
   if (!currentUser) return null;
@@ -76,7 +76,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         >
           <Zap className='w-4 h-4' />
           <span>Lightning Wallet</span>
-          {isConfigured && <div className='w-2 h-2 rounded-full bg-green-500 ml-auto'></div>}
+          {isConnected && <div className='w-2 h-2 rounded-full bg-green-500 ml-auto'></div>}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={onAddAccountClick}

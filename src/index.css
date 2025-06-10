@@ -120,3 +120,80 @@
     -webkit-line-clamp: 2;
   }
 }
+
+/* Bitcoin Connect Modal Fixes */
+bc-modal {
+  z-index: 9999 !important;
+}
+
+bc-modal::part(overlay) {
+  z-index: 9999 !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px) !important;
+  pointer-events: auto !important;
+}
+
+bc-modal::part(modal) {
+  z-index: 10000 !important;
+  pointer-events: auto !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+bc-modal::part(content) {
+  pointer-events: auto !important;
+  background: white !important;
+  border-radius: 8px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+}
+
+/* Dark mode support for Bitcoin Connect */
+.dark bc-modal::part(content) {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Ensure buttons in Bitcoin Connect modal are clickable */
+bc-modal button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+bc-modal a {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Target wallet option buttons specifically */
+bc-modal .wallet-option,
+bc-modal [role="button"],
+bc-modal .bc-button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 10001 !important;
+}
+
+/* Fix modal backdrop issues */
+bc-modal * {
+  pointer-events: auto !important;
+}
+
+/* Prevent event interference */
+body:has(bc-modal[open]) {
+  overflow: hidden;
+}
+
+/* Alternative selector for when modal is open */
+body:has(bc-modal) * {
+  pointer-events: auto;
+}
+
+body:has(bc-modal) bc-modal {
+  pointer-events: auto !important;
+}

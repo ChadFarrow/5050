@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Copy, Check, ExternalLink, QrCode } from 'lucide-react';
+import { Copy, Check, ExternalLink, QrCode, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/useToast';
+import { useWallet } from '@/hooks/useWallet';
 import { formatSats } from '@/lib/utils';
-import type { LightningInvoice as LightningInvoiceType } from '@/lib/nwc';
+import type { LightningInvoice as LightningInvoiceType } from '@/types/lightning';
 
 interface LightningInvoiceProps {
   invoice: LightningInvoiceType;
@@ -15,7 +16,9 @@ interface LightningInvoiceProps {
 
 export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoiceProps) {
   const [copied, setCopied] = useState(false);
+  const [isPayingWithWallet, setIsPayingWithWallet] = useState(false);
   const { toast } = useToast();
+  const wallet = useWallet();
 
   const handleCopy = async () => {
     try {
@@ -40,6 +43,40 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
     // Try to open the invoice in a Lightning wallet
     const lightningUrl = `lightning:${invoice.bolt11}`;
     window.open(lightningUrl, '_blank');
+  };
+
+  const handlePayWithWallet = async () => {
+    if (!wallet.isConnected) {
+      toast({
+        title: "No Wallet Connected",
+        description: "Please connect a wallet first to pay this invoice",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPayingWithWallet(true);
+    try {
+      await wallet.payInvoice(invoice.bolt11);
+      
+      toast({
+        title: "Payment Sent",
+        description: "Your Lightning payment has been sent successfully",
+      });
+      
+      if (onPaymentComplete) {
+        onPaymentComplete();
+      }
+    } catch (error) {
+      console.error('Payment failed:', error);
+      toast({
+        title: "Payment Failed",
+        description: error instanceof Error ? error.message : "Failed to send payment",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPayingWithWallet(false);
+    }
   };
 
   const amountSats = Math.floor(invoice.amount_msat / 1000);
@@ -118,7 +155,19 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
           </Button>
         </div>
 
+        {wallet.isConnected && (
+          <Button 
+            className="w-full" 
+            disabled={isExpired || isPayingWithWallet}
+            onClick={handlePayWithWallet}
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            {isPayingWithWallet ? "Paying..." : isExpired ? "Invoice Expired" : "Pay with Bitcoin Connect"}
+          </Button>
+        )}
+
         <Button 
+          variant="outline"
           className="w-full" 
           disabled={isExpired}
           onClick={onPaymentComplete}

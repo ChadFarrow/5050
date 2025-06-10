@@ -37,6 +37,52 @@ export function AppProvider(props: AppProviderProps) {
   // Apply theme effects to document
   useApplyTheme(config.theme);
 
+  // Load Bitcoin Connect web components
+  useEffect(() => {
+    const loadBitcoinConnect = async () => {
+      try {
+        // Import Bitcoin Connect to register web components
+        await import('@getalby/bitcoin-connect');
+        
+        // Initialize Bitcoin Connect with default config
+        const { init } = await import('@getalby/bitcoin-connect');
+        init({
+          appName: 'PodRaffle',
+          showBalance: true,
+        });
+        
+        console.log('Bitcoin Connect loaded and initialized');
+        
+        // Add runtime modal fixes
+        setTimeout(() => {
+          const style = document.createElement('style');
+          style.textContent = `
+            bc-modal {
+              z-index: 9999 !important;
+            }
+            bc-modal::part(overlay) {
+              pointer-events: auto !important;
+              z-index: 9999 !important;
+            }
+            bc-modal::part(modal) {
+              pointer-events: auto !important;
+              z-index: 10000 !important;
+            }
+            bc-modal * {
+              pointer-events: auto !important;
+            }
+          `;
+          document.head.appendChild(style);
+          console.log('Applied Bitcoin Connect modal fixes');
+        }, 500);
+      } catch (error) {
+        console.warn('Failed to load Bitcoin Connect:', error);
+      }
+    };
+
+    loadBitcoinConnect();
+  }, []);
+
   return (
     <AppContext.Provider value={appContextValue}>
       {children}
