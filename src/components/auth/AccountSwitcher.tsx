@@ -16,7 +16,7 @@ import { genUserName } from '@/lib/genUserName';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LightningConfig } from '@/components/LightningConfig';
-import { useBitcoinConnect } from '@/hooks/useBitcoinConnect';
+import { useWallet } from '@/hooks/useWallet';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;
@@ -24,7 +24,7 @@ interface AccountSwitcherProps {
 
 export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   const { currentUser, otherUsers, setLogin, removeLogin } = useLoggedInAccounts();
-  const { isConnected } = useBitcoinConnect();
+  const { isConnected } = useWallet();
   const [lightningDialogOpen, setLightningDialogOpen] = useState(false);
 
   if (!currentUser) return null;

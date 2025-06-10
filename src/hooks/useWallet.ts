@@ -19,6 +19,8 @@ export interface WalletActions {
   payInvoice: (invoice: string) => Promise<void>;
   getBalance: () => Promise<number>;
   getInfo: () => Promise<{ alias?: string; pubkey?: string }>;
+  disconnect: () => void;
+  closeModal: () => void;
 }
 
 export function useWallet(): WalletState & WalletActions {
@@ -41,6 +43,13 @@ export function useWallet(): WalletState & WalletActions {
       getInfo: async () => {
         throw new Error('No wallet connected');
       },
+      disconnect: () => {
+        // No-op when not connected
+      },
+      closeModal: () => {
+        // Close modal even when not connected
+        bitcoinConnect.closeModal();
+      },
     };
   }
 
@@ -55,5 +64,7 @@ export function useWallet(): WalletState & WalletActions {
     payInvoice: bitcoinConnect.payInvoice,
     getBalance: bitcoinConnect.getBalance,
     getInfo: bitcoinConnect.getInfo,
+    disconnect: bitcoinConnect.disconnect,
+    closeModal: bitcoinConnect.closeModal,
   };
 }

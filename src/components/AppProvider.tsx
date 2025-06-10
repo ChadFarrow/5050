@@ -41,8 +41,17 @@ export function AppProvider(props: AppProviderProps) {
   useEffect(() => {
     const loadBitcoinConnect = async () => {
       try {
-        // Import Bitcoin Connect components
-        await import('@getalby/bitcoin-connect');
+        // Import Bitcoin Connect components and store
+        const bitcoinConnect = await import('@getalby/bitcoin-connect');
+        
+        // Expose the store to window for our hook to access
+        // Bitcoin Connect exports its store, try to access it
+        const storeModule = bitcoinConnect as { default?: unknown; store?: unknown };
+        const store = storeModule.default || storeModule.store;
+        if (store) {
+          (globalThis as { bitcoinConnectStore?: unknown }).bitcoinConnectStore = store;
+        }
+        
         console.log('Bitcoin Connect loaded');
       } catch (error) {
         console.warn('Failed to load Bitcoin Connect:', error);

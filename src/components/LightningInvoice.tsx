@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/useToast';
-import { useBitcoinConnect } from '@/hooks/useBitcoinConnect';
+import { useWallet } from '@/hooks/useWallet';
 import { formatSats } from '@/lib/utils';
 import type { LightningInvoice as LightningInvoiceType } from '@/types/lightning';
 
@@ -18,7 +18,7 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
   const [copied, setCopied] = useState(false);
   const [isPayingWithWallet, setIsPayingWithWallet] = useState(false);
   const { toast } = useToast();
-  const wallet = useBitcoinConnect();
+  const wallet = useWallet();
 
   const handleCopy = async () => {
     try {

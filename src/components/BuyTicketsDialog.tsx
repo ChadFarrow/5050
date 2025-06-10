@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
-import { useBitcoinConnect } from "@/hooks/useBitcoinConnect";
+import { useWallet } from "@/hooks/useWallet";
 import { useToastUtils } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
 import { LightningInvoice } from "@/components/LightningInvoice";
@@ -30,7 +30,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const { data: stats } = useCampaignStats(campaign.pubkey, campaign.dTag);
-  const wallet = useBitcoinConnect();
+  const wallet = useWallet();
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const toast = useToastUtils();
   

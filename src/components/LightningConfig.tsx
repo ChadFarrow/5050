@@ -1,19 +1,20 @@
-import React from 'react';
-import { Zap, Wallet, ExternalLink, AlertCircle, RefreshCw, Plug } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Zap, Wallet, ExternalLink, AlertCircle, RefreshCw, Plug, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useBitcoinConnect } from '@/hooks/useBitcoinConnect';
+import { useWallet } from '@/hooks/useWallet';
 import { useToast } from '@/hooks/useToast';
 
 export function LightningConfig() {
-  const bitcoinConnect = useBitcoinConnect();
+  const wallet = useWallet();
   const { toast } = useToast();
+  const bcButtonRef = useRef<HTMLDivElement>(null);
 
   const handleRefreshBalance = async () => {
     try {
-      await bitcoinConnect.getBalance();
+      await wallet.getBalance();
       toast({
         title: "Balance Updated",
         description: "Wallet balance has been refreshed",
@@ -25,6 +26,33 @@ export function LightningConfig() {
         variant: "destructive",
       });
     }
+  };
+
+  // Programmatic close function for Bitcoin Connect modal
+  const closeBitcoinConnectModal = () => {
+    // Try to find the <bc-button> element
+    const bcButton = bcButtonRef.current?.querySelector('bc-button');
+    if (bcButton) {
+      // Try calling a close method if it exists
+      if (typeof (bcButton as any).close === 'function') {
+        (bcButton as any).close();
+        return;
+      }
+      // Try clicking the close button inside the shadow DOM
+      const shadowRoot = (bcButton as any).shadowRoot;
+      if (shadowRoot) {
+        const closeBtn = shadowRoot.querySelector('button[aria-label="Close"],button[title="Close"],button[aria-label="close"],button[title="close"]');
+        if (closeBtn) {
+          (closeBtn as HTMLButtonElement).click();
+          return;
+        }
+      }
+    }
+    toast({
+      title: 'Modal Close Failed',
+      description: 'Could not programmatically close the Bitcoin Connect modal.',
+      variant: 'destructive',
+    });
   };
 
   return (
@@ -40,26 +68,26 @@ export function LightningConfig() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {bitcoinConnect.isConnected ? (
+          {wallet.isConnected ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Wallet className="h-4 w-4 text-green-600" />
                   <span className="font-medium">Bitcoin Connect - Connected</span>
-                  {bitcoinConnect.nodeInfo?.alias && (
-                    <Badge variant="secondary">{bitcoinConnect.nodeInfo.alias}</Badge>
+                  {wallet.nodeInfo?.alias && (
+                    <Badge variant="secondary">{wallet.nodeInfo.alias}</Badge>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={bitcoinConnect.disconnect}>
+                <Button variant="outline" size="sm" onClick={() => { wallet.disconnect(); wallet.closeModal(); }}>
                   Disconnect
                 </Button>
               </div>
 
-              {bitcoinConnect.balance !== undefined && (
+              {wallet.balance !== undefined && (
                 <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium">Balance:</span>
-                    <span className="text-sm">{bitcoinConnect.balance.toLocaleString()} sats</span>
+                    <span className="text-sm">{wallet.balance.toLocaleString()} sats</span>
                   </div>
                   <Button
                     variant="ghost"
@@ -72,10 +100,10 @@ export function LightningConfig() {
                 </div>
               )}
 
-              {bitcoinConnect.error && (
+              {wallet.error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{bitcoinConnect.error}</AlertDescription>
+                  <AlertDescription>{wallet.error}</AlertDescription>
                 </Alert>
               )}
             </div>
@@ -90,27 +118,48 @@ export function LightningConfig() {
               </Alert>
 
               {/* Bitcoin Connect Web Component */}
-              <div className="space-y-4">
+              <div className="space-y-4" ref={bcButtonRef}>
                 <div 
                   dangerouslySetInnerHTML={{
-                    __html: '<bc-button class="w-full"></bc-button>'
+                    __html: '<bc-button class="w-full">Connect Lightning Wallet</bc-button>'
                   }}
                 />
-                
-                <Button 
-                  onClick={bitcoinConnect.connect} 
-                  disabled={bitcoinConnect.isConnecting}
-                  className="w-full"
-                  variant="outline"
-                >
-                  {bitcoinConnect.isConnecting ? "Connecting..." : "Or Connect with WebLN"}
+                {/* Debug button to test programmatic close */}
+                <Button variant="outline" size="sm" onClick={closeBitcoinConnectModal}>
+                  Debug: Close Bitcoin Connect Modal
                 </Button>
+                
+                <div className="flex items-center justify-between">
+                  <Button 
+                    onClick={() => {
+                      // Use a direct WebLN connection as fallback
+                      if (window.webln) {
+                        window.webln.enable();
+                      }
+                    }} 
+                    disabled={wallet.isConnecting}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    {wallet.isConnecting ? "Connecting..." : "Or Connect with WebLN"}
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={wallet.closeModal}
+                    title="Close any open wallet modals"
+                    className="ml-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
-              {bitcoinConnect.error && (
+              {wallet.error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{bitcoinConnect.error}</AlertDescription>
+                  <AlertDescription>{wallet.error}</AlertDescription>
                 </Alert>
               )}
             </div>

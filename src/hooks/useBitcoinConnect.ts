@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 
-// Note: Bitcoin Connect is a web components library, not React
-// We'll integrate with the global webln provider it creates
+// Import Bitcoin Connect store for proper disconnect functionality
 declare global {
   interface Window {
     webln?: {
@@ -12,6 +11,8 @@ declare global {
       getBalance?(): Promise<{ balance: number }>;
       getInfo?(): Promise<{ node?: { alias?: string; pubkey?: string } }>;
     };
+    // Bitcoin Connect store
+    bitcoinConnectStore?: unknown;
   }
 }
 
@@ -33,6 +34,7 @@ export interface BitcoinConnectActions {
   payInvoice: (invoice: string) => Promise<void>;
   getBalance: () => Promise<number>;
   getInfo: () => Promise<{ alias?: string; pubkey?: string }>;
+  closeModal: () => void;
 }
 
 export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions {
@@ -41,38 +43,84 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
     isConnecting: false,
   });
 
-  // Check WebLN availability
+  // Check Bitcoin Connect store and WebLN availability
   useEffect(() => {
-    const checkWebLN = () => {
-      if (window.webln?.enabled) {
+    const checkConnection = () => {
+      // First check Bitcoin Connect store if available
+      const store = window.bitcoinConnectStore as { getState?: () => { connected?: boolean; connecting?: boolean } } | undefined;
+      if (store?.getState) {
+        try {
+          const bcState = store.getState();
+          if (bcState.connected && window.webln?.enabled) {
+            setState(prev => ({
+              ...prev,
+              isConnected: true,
+              isConnecting: false,
+            }));
+            
+            // Try to get initial info
+            Promise.allSettled([
+              window.webln?.getBalance?.(),
+              window.webln?.getInfo?.(),
+            ]).then(([balanceResult, infoResult]) => {
+              setState(prev => ({
+                ...prev,
+                balance: balanceResult.status === 'fulfilled' && balanceResult.value ? balanceResult.value.balance : undefined,
+                nodeInfo: infoResult.status === 'fulfilled' && infoResult.value ? {
+                  alias: infoResult.value.node?.alias,
+                  pubkey: infoResult.value.node?.pubkey,
+                } : undefined,
+              }));
+            });
+          } else {
+            setState(prev => ({
+              ...prev,
+              isConnected: false,
+              isConnecting: bcState.connecting || false,
+            }));
+          }
+        } catch {
+          // Fallback if store access fails
+          if (window.webln?.enabled) {
+            setState(prev => ({
+              ...prev,
+              isConnected: true,
+              isConnecting: false,
+            }));
+          }
+        }
+      } else if (window.webln?.enabled) {
+        // Fallback to direct WebLN check
         setState(prev => ({
           ...prev,
           isConnected: true,
           isConnecting: false,
         }));
-        
-        // Try to get initial info
-        Promise.allSettled([
-          window.webln?.getBalance?.(),
-          window.webln?.getInfo?.(),
-        ]).then(([balanceResult, infoResult]) => {
-          setState(prev => ({
-            ...prev,
-            balance: balanceResult.status === 'fulfilled' && balanceResult.value ? balanceResult.value.balance : undefined,
-            nodeInfo: infoResult.status === 'fulfilled' && infoResult.value ? {
-              alias: infoResult.value.node?.alias,
-              pubkey: infoResult.value.node?.pubkey,
-            } : undefined,
-          }));
-        });
       }
     };
 
-    checkWebLN();
+    checkConnection();
     
-    // Listen for webln events if available
-    const interval = setInterval(checkWebLN, 1000);
-    return () => clearInterval(interval);
+    // Subscribe to Bitcoin Connect store changes if available
+    let unsubscribe: (() => void) | undefined;
+    const store = window.bitcoinConnectStore as { subscribe?: (fn: () => void) => () => void } | undefined;
+    if (store?.subscribe) {
+      try {
+        unsubscribe = store.subscribe(checkConnection);
+      } catch {
+        // Ignore subscription errors
+      }
+    }
+    
+    // Fallback polling for WebLN changes
+    const interval = setInterval(checkConnection, 1000);
+    
+    return () => {
+      clearInterval(interval);
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const connect = useCallback(async () => {
@@ -100,6 +148,17 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
   }, []);
 
   const disconnect = useCallback(() => {
+    // Use Bitcoin Connect's disconnect if available
+    const store = window.bitcoinConnectStore as { disconnect?: () => void } | undefined;
+    if (store?.disconnect) {
+      try {
+        store.disconnect();
+      } catch {
+        // Ignore disconnect errors
+      }
+    }
+    
+    // Always update local state
     setState({
       isConnected: false,
       isConnecting: false,
@@ -107,6 +166,17 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
       nodeInfo: undefined,
       error: undefined,
     });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    const store = window.bitcoinConnectStore as { setModalOpen?: (open: boolean) => void } | undefined;
+    if (store?.setModalOpen) {
+      try {
+        store.setModalOpen(false);
+      } catch {
+        // Ignore modal close errors
+      }
+    }
   }, []);
 
   const createInvoice = useCallback(async (amount: number, memo?: string): Promise<string> => {
@@ -177,5 +247,6 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
     payInvoice,
     getBalance,
     getInfo,
+    closeModal,
   };
 }
