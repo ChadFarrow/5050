@@ -195,19 +195,21 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
             console.log('Forcing query refresh after delay...');
             queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
           }, 2000);
+
+          // Show success toast
+          toast.campaign.ticketsPurchased(tickets, formatSats(totalCost));
+
+          // Reset form and close dialog only after successful event publishing
+          setTicketCount("1");
+          setMessage("");
+          setCurrentInvoice(null);
+          onOpenChange(false);
         },
         onError: (error) => {
           console.error('Failed to publish ticket purchase event:', error);
+          toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
         }
       });
-
-      toast.campaign.ticketsPurchased(tickets, formatSats(totalCost));
-
-      // Reset form and close dialog
-      setTicketCount("1");
-      setMessage("");
-      setCurrentInvoice(null);
-      onOpenChange(false);
     } catch (error) {
       console.error("Error recording purchase:", error);
       toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");

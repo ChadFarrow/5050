@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Copy, Check, ExternalLink, QrCode, Zap } from 'lucide-react';
+import QRCode from 'qrcode';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,8 +18,39 @@ interface LightningInvoiceProps {
 export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoiceProps) {
   const [copied, setCopied] = useState(false);
   const [isPayingWithWallet, setIsPayingWithWallet] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
   const { toast } = useToast();
   const wallet = useWallet();
+
+  useEffect(() => {
+    const generateQRCode = async () => {
+      try {
+        const dataUrl = await QRCode.toDataURL(invoice.bolt11, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#ffffff'
+          }
+        });
+        setQrCodeDataUrl(dataUrl);
+      } catch (error) {
+        console.error('Failed to generate QR code:', error);
+      }
+    };
+
+    generateQRCode();
+  }, [invoice.bolt11]);
+
+  // Show payment prompt after 10 seconds to encourage users to confirm payment
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowPaymentPrompt(true);
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCopy = async () => {
     try {
@@ -108,14 +140,22 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
 
         <Separator />
 
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <div className="text-sm font-medium">Payment Hash</div>
-            <div className="text-xs font-mono bg-muted p-2 rounded break-all">
-              {invoice.payment_hash}
+        {qrCodeDataUrl && (
+          <div className="flex flex-col items-center space-y-2">
+            <div className="text-sm font-medium">Scan with Lightning Wallet</div>
+            <div className="bg-white p-4 rounded-lg border">
+              <img 
+                src={qrCodeDataUrl} 
+                alt="Lightning Invoice QR Code" 
+                className="w-48 h-48"
+              />
             </div>
           </div>
+        )}
 
+        <Separator />
+
+        <div className="space-y-3">
           <div className="space-y-1">
             <div className="text-sm font-medium">Expires</div>
             <div className="text-sm text-muted-foreground">
@@ -167,17 +207,23 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
         )}
 
         <Button 
-          variant="outline"
-          className="w-full" 
+          variant={showPaymentPrompt ? "default" : "outline"}
+          className={`w-full ${showPaymentPrompt ? "bg-green-600 hover:bg-green-700 text-white animate-pulse" : ""}`}
           disabled={isExpired}
           onClick={onPaymentComplete}
         >
           <QrCode className="h-4 w-4 mr-2" />
-          {isExpired ? "Invoice Expired" : "I've Paid This Invoice"}
+          {isExpired ? "Invoice Expired" : showPaymentPrompt ? "✓ I've Paid This Invoice" : "I've Paid This Invoice"}
         </Button>
 
+        {showPaymentPrompt && !isExpired && (
+          <div className="text-sm text-center text-green-600 font-medium">
+            Did you complete the payment? Click the button above to confirm.
+          </div>
+        )}
+
         <div className="text-xs text-muted-foreground text-center">
-          Scan with your Lightning wallet or copy the invoice above
+          Scan the QR code above with your Lightning wallet or copy the invoice
         </div>
       </CardContent>
     </Card>
