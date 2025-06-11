@@ -14,6 +14,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -56,6 +57,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<FundraiserForm>(initialForm);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
@@ -170,21 +172,42 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
         kind: 31950,
         content: form.content.trim(),
         tags,
-      });
+      }, {
+        onSuccess: (eventId) => {
+          console.log('Fundraiser published successfully:', eventId);
+          
+          // Invalidate fundraisers query so the list updates immediately
+          queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
+          
+          // Force a refresh after a small delay to ensure the event has propagated
+          setTimeout(() => {
+            console.log('Forcing fundraisers query refresh after delay...');
+            queryClient.refetchQueries({ queryKey: ['fundraisers'] });
+          }, 2000);
 
-      toast({
-        title: "Fundraiser Created!",
-        description: "Your fundraiser has been published to Nostr",
-      });
+          toast({
+            title: "Fundraiser Created!",
+            description: "Your fundraiser has been published to Nostr",
+          });
 
-      // Reset form and close dialog
-      setForm(initialForm);
-      onOpenChange(false);
+          // Reset form and close dialog
+          setForm(initialForm);
+          onOpenChange(false);
+        },
+        onError: (error) => {
+          console.error('Failed to publish fundraiser:', error);
+          toast({
+            title: "Error",
+            description: "Failed to create fundraiser. Please try again.",
+            variant: "destructive",
+          });
+        }
+      });
     } catch (error) {
       console.error("Error creating campaign:", error);
       toast({
-        title: "Error",
-        description: "Failed to create fundraiser. Please try again.",
+        title: "Validation Error",
+        description: "Failed to prepare fundraiser data. Please check your inputs.",
         variant: "destructive",
       });
     }

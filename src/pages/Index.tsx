@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoginArea } from "@/components/auth/LoginArea";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useFundraisers } from "@/hooks/useCampaigns";
+import { useAutoWinnerSelection } from "@/hooks/useAutoWinnerSelection";
 import { CampaignCard } from "@/components/CampaignCard";
 import { CreateCampaignDialog } from "@/components/CreateCampaignDialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +19,29 @@ const Index = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [hiddenFundraisers, setHiddenFundraisers] = useState<Set<string>>(new Set());
   const { data: fundraisers, isLoading } = useFundraisers();
+  
+  // Enable automatic winner selection
+  const { resetProcessedFundraisers, manualTriggerCheck } = useAutoWinnerSelection();
+
+  // Expose functions to window for debugging (only in development)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      const windowWithDebug = window as unknown as { 
+        debugAutoWinner: { 
+          reset: () => void; 
+          check: () => void; 
+        } 
+      };
+      windowWithDebug.debugAutoWinner = {
+        reset: resetProcessedFundraisers,
+        check: manualTriggerCheck,
+      };
+      console.log('🛠️ Auto-winner debug functions available:', {
+        reset: 'window.debugAutoWinner.reset()',
+        check: 'window.debugAutoWinner.check()',
+      });
+    }
+  }, [resetProcessedFundraisers, manualTriggerCheck]);
 
   // Load hidden fundraisers from localStorage on mount
   useEffect(() => {

@@ -12,13 +12,23 @@ interface WinnerDisplayProps {
 export function WinnerDisplay({ result }: WinnerDisplayProps) {
   const { displayName, profileImage } = useAuthorDisplay(result.winnerPubkey);
   const resultDate = new Date(result.createdAt * 1000);
+  
+  // Check if this was automatically drawn
+  const isAutoDrawn = result.event.tags.some(tag => tag[0] === 'auto_drawn' && tag[1] === 'true');
 
   return (
     <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950 dark:to-orange-950 border-yellow-200 dark:border-yellow-800">
       <CardHeader>
-        <CardTitle className="flex items-center text-yellow-800 dark:text-yellow-200">
-          <Trophy className="h-5 w-5 mr-2" />
-          Winner Announced!
+        <CardTitle className="flex items-center justify-between text-yellow-800 dark:text-yellow-200">
+          <div className="flex items-center">
+            <Trophy className="h-5 w-5 mr-2" />
+            Winner Announced!
+          </div>
+          {isAutoDrawn && (
+            <div className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+              Auto-drawn
+            </div>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

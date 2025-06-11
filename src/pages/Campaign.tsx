@@ -6,6 +6,7 @@ import { useFundraiser } from "@/hooks/useCampaigns";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { CampaignHeader } from "@/components/campaign/CampaignHeader";
 import { WinnerDisplay } from "@/components/campaign/WinnerDisplay";
+import { DrawWinnerCard } from "@/components/campaign/DrawWinnerCard";
 import { ParticipantsList } from "@/components/campaign/ParticipantsList";
 import { CampaignSidebar } from "@/components/campaign/CampaignSidebar";
 import { CampaignSkeleton } from "@/components/campaign/CampaignSkeleton";
@@ -66,6 +67,10 @@ export default function Campaign() {
             
             {stats?.result && (
               <WinnerDisplay result={stats.result} />
+            )}
+            
+            {stats && (
+              <DrawWinnerCard campaign={campaign} stats={stats} />
             )}
             
             <ParticipantsList purchases={stats?.purchases || []} />
