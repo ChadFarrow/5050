@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Trophy, Zap, Users, DollarSign } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trophy, Zap, Users, DollarSign, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,10 +16,38 @@ import { RelaySelector } from "@/components/RelaySelector";
 const Index = () => {
   const { user } = useCurrentUser();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [hiddenFundraisers, setHiddenFundraisers] = useState<Set<string>>(new Set());
   const { data: fundraisers, isLoading } = useFundraisers();
 
+  // Load hidden fundraisers from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('hiddenCompletedFundraisers');
+    if (stored) {
+      try {
+        const hiddenIds = JSON.parse(stored);
+        setHiddenFundraisers(new Set(hiddenIds));
+      } catch (error) {
+        console.error('Failed to parse hidden fundraisers from localStorage:', error);
+      }
+    }
+  }, []);
+
   const activeFundraisers = fundraisers?.filter(f => f.isActive) || [];
-  const endedFundraisers = fundraisers?.filter(f => !f.isActive) || [];
+  const endedFundraisers = fundraisers?.filter(f => !f.isActive && !hiddenFundraisers.has(f.id)) || [];
+
+  const clearCompletedFundraisers = () => {
+    const completedIds = fundraisers?.filter(f => !f.isActive).map(f => f.id) || [];
+    const newHiddenSet = new Set([...hiddenFundraisers, ...completedIds]);
+    setHiddenFundraisers(newHiddenSet);
+    
+    // Save to localStorage
+    localStorage.setItem('hiddenCompletedFundraisers', JSON.stringify([...newHiddenSet]));
+  };
+
+  const showAllCompletedFundraisers = () => {
+    setHiddenFundraisers(new Set());
+    localStorage.removeItem('hiddenCompletedFundraisers');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -195,6 +223,32 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="ended" className="space-y-4 sm:space-y-6">
+              {/* Clear Completed Header */}
+              {endedFundraisers.length > 0 && (
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Completed Fundraisers</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={showAllCompletedFundraisers}
+                      className="text-xs"
+                    >
+                      Show All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearCompletedFundraisers}
+                      className="text-xs text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Clear Completed
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               {isLoading ? (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {[...Array(3)].map((_, i) => (
