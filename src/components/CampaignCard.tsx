@@ -13,6 +13,7 @@ import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
 import { genUserName } from "@/lib/genUserName";
 import { formatSats, formatTimeRemaining } from "@/lib/utils";
 import type { Fundraiser } from "@/hooks/useCampaigns";
+import { nip19 } from 'nostr-tools';
 
 interface FundraiserCardProps {
   fundraiser: Fundraiser;
@@ -76,12 +77,21 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
 
           <div>
             <CardTitle className="text-lg leading-tight mb-2">
-              <Link 
-                to={`/fundraiser/${fundraiser.pubkey}/${fundraiser.dTag}`}
-                className="hover:text-purple-600 transition-colors"
-              >
-                {fundraiser.title}
-              </Link>
+              {(() => {
+                const naddr = nip19.naddrEncode({
+                  pubkey: fundraiser.pubkey,
+                  kind: 31950,
+                  identifier: fundraiser.dTag,
+                });
+                return (
+                  <Link 
+                    to={`/${naddr}`}
+                    className="hover:text-purple-600 transition-colors"
+                  >
+                    {fundraiser.title}
+                  </Link>
+                );
+              })()}
             </CardTitle>
             <CardDescription className="text-sm line-clamp-2">
               {fundraiser.description}
