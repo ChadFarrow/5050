@@ -41,20 +41,29 @@ export interface TicketPurchase {
 }
 
 function validateTicketPurchase(event: NostrEvent): boolean {
-  if (event.kind !== 31951) return false;
+  if (event.kind !== 31951) {
+    console.log('Invalid event kind:', event.kind, 'for event:', event.id);
+    return false;
+  }
 
   const tags = new Map(event.tags.map(([name, value]) => [name, value]));
   const requiredTags = ['d', 'a', 'amount', 'tickets', 'bolt11', 'payment_hash'];
 
   for (const tag of requiredTags) {
-    if (!tags.has(tag) || !tags.get(tag)) return false;
+    if (!tags.has(tag) || !tags.get(tag)) {
+      console.log(`Missing or empty tag '${tag}' in event:`, event.id, 'tags:', Object.fromEntries(tags));
+      return false;
+    }
   }
 
   // Validate numeric fields
   const amount = parseInt(tags.get('amount') || '0');
   const tickets = parseInt(tags.get('tickets') || '0');
 
-  if (amount <= 0 || tickets <= 0) return false;
+  if (amount <= 0 || tickets <= 0) {
+    console.log(`Invalid numeric values in event ${event.id}:`, { amount, tickets });
+    return false;
+  }
 
   return true;
 }
@@ -154,6 +163,13 @@ export function useCampaignStats(pubkey: string, dTag: string) {
       const validPurchaseEvents = purchaseEvents.filter(validateTicketPurchase);
       const purchases = validPurchaseEvents.map(eventToTicketPurchase);
 
+      console.log(`Campaign stats for ${pubkey}:${dTag}:`, {
+        totalPurchaseEvents: purchaseEvents.length,
+        validPurchaseEvents: validPurchaseEvents.length,
+        invalidEvents: purchaseEvents.length - validPurchaseEvents.length,
+        purchases: purchases.length
+      });
+
       // Sort by creation date
       purchases.sort((a, b) => a.createdAt - b.createdAt);
 
@@ -161,6 +177,13 @@ export function useCampaignStats(pubkey: string, dTag: string) {
       const totalRaised = purchases.reduce((sum, p) => sum + p.amount, 0);
       const totalTickets = purchases.reduce((sum, p) => sum + p.tickets, 0);
       const uniqueParticipants = new Set(purchases.map(p => p.pubkey)).size;
+
+      console.log(`Calculated stats:`, {
+        totalRaised,
+        totalTickets,
+        uniqueParticipants,
+        recentPurchases: purchases.slice(-3).map(p => ({ tickets: p.tickets, amount: p.amount, createdAt: p.createdAt }))
+      });
 
       // Check for campaign result
       let result: CampaignResult | undefined;
