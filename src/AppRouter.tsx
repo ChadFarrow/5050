@@ -14,6 +14,7 @@ export function AppRouter() {
         <Route path="/" element={<Index />} />
         <Route path="/fundraiser/:pubkey/:dTag" element={<Campaign />} />
         <Route path="/campaign/:pubkey/:dTag" element={<Campaign />} />
+        <Route path="/:nip19" element={<Campaign />} />
         <Route path="/demo" element={<Demo />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
