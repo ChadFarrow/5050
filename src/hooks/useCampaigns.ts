@@ -18,6 +18,7 @@ export interface Fundraiser {
   image?: string;
   isActive: boolean;
   createdAt: number;
+  manualDraw: boolean;
   event: NostrEvent;
 }
 
@@ -35,24 +36,47 @@ function validateFundraiserEvent(event: NostrEvent): boolean {
   }
 
   // Validate numeric fields
-  const target = parseInt(tags.get('target') || '0');
   const ticketPrice = parseInt(tags.get('ticket_price') || '0');
   const endDate = parseInt(tags.get('end_date') || '0');
 
-  if (target <= 0 || ticketPrice <= 0 || endDate <= 0) return false;
+  if (ticketPrice <= 0 || endDate <= 0) return false;
 
   return true;
 }
 
-function eventToFundraiser(event: NostrEvent): Fundraiser {
+async function eventToFundraiser(event: NostrEvent, nostr: { query: (filters: object[], options?: object) => Promise<NostrEvent[]> }): Promise<Fundraiser> {
   const tags = new Map(event.tags.map(([name, value]) => [name, value]));
   const now = Math.floor(Date.now() / 1000);
   const endDate = parseInt(tags.get('end_date') || '0');
+  const dTag = tags.get('d') || '';
+  const isManualDraw = tags.get('manual_draw') === 'true';
+
+  // For manual draws, check if winner has been drawn
+  let isActive = endDate > now;
+  if (isManualDraw) {
+    try {
+      // Check if there's a result event for this fundraiser
+      const resultEvents = await nostr.query([{
+        kinds: [31952],
+        authors: [event.pubkey],
+        '#d': [dTag],
+        limit: 1,
+      }], { signal: AbortSignal.timeout(2000) });
+      
+      // If there's a winner, the fundraiser is no longer active regardless of end date
+      if (resultEvents.length > 0) {
+        isActive = false;
+      }
+    } catch (error) {
+      console.log('Failed to check for winner in manual draw fundraiser:', error);
+      // Fall back to time-based check
+    }
+  }
 
   return {
     id: event.id,
     pubkey: event.pubkey,
-    dTag: tags.get('d') || '',
+    dTag,
     title: tags.get('title') || '',
     description: tags.get('description') || '',
     content: event.content,
@@ -63,8 +87,9 @@ function eventToFundraiser(event: NostrEvent): Fundraiser {
     podcastUrl: tags.get('podcast_url'),
     episode: tags.get('episode'),
     image: tags.get('image'),
-    isActive: endDate > now,
+    isActive,
     createdAt: event.created_at,
+    manualDraw: isManualDraw,
     event,
   };
 }
@@ -84,7 +109,9 @@ export function useFundraisers() {
 
       // Filter and transform events
       const validEvents = events.filter(validateFundraiserEvent);
-      const fundraisers = validEvents.map(eventToFundraiser);
+      const fundraisers = await Promise.all(
+        validEvents.map(event => eventToFundraiser(event, nostr))
+      );
 
       // Sort by creation date, newest first
       return fundraisers.sort((a, b) => b.createdAt - a.createdAt);
@@ -117,7 +144,7 @@ export function useFundraiser(pubkey: string, dTag: string) {
         return null;
       }
 
-      return eventToFundraiser(event);
+      return await eventToFundraiser(event, nostr);
     },
     enabled: !!pubkey && !!dTag,
     staleTime: 30000,

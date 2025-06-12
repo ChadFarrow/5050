@@ -54,16 +54,15 @@ export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
   // Check if user is the campaign creator
   const isCreator = user?.pubkey === campaign.pubkey;
   
-  // Check if campaign has ended
-  const isExpired = Date.now() > campaign.endDate * 1000;
+  // For manual draws, we show the button regardless of end date
   
   // Check if winner has already been drawn
   const hasWinner = !!stats.result;
   
   // Should show draw winner card?
-  // Note: With auto-winner selection enabled, this card may rarely be seen
-  // as winners should be drawn automatically when fundraisers end
-  const shouldShow = isCreator && isExpired && !hasWinner && stats.totalTickets > 0;
+  // For manual draws: show if creator, has tickets, no winner yet (regardless of end date)
+  // For auto draws: show only if expired (but this shouldn't happen since auto-draws are automatic)
+  const shouldShow = isCreator && !hasWinner && stats.totalTickets > 0 && campaign.manualDraw;
 
   if (!shouldShow) {
     return null;
@@ -167,10 +166,10 @@ export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
       <CardHeader>
         <CardTitle className="flex items-center text-yellow-800 dark:text-yellow-200">
           <Trophy className="h-5 w-5 mr-2" />
-          Ready to Draw Winner
+          Ready for Live Winner Draw
         </CardTitle>
         <CardDescription>
-          The fundraiser has ended. Draw a random winner from {stats.totalTickets} tickets.
+          This fundraiser is set for manual winner selection. Draw a random winner from {stats.totalTickets} tickets whenever you're ready (perfect for live shows).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -35,6 +35,7 @@ interface FundraiserForm {
   durationValue: string;
   durationUnit: string;
   image: string;
+  manualWinnerDraw: boolean;
 }
 
 const initialForm: FundraiserForm = {
@@ -51,6 +52,7 @@ const initialForm: FundraiserForm = {
   durationValue: "1",
   durationUnit: "hours",
   image: "",
+  manualWinnerDraw: false,
 };
 
 export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
@@ -93,13 +95,15 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
     if (!form.title.trim()) return "Title is required";
     if (!form.description.trim()) return "Description is required";
     if (!form.podcast.trim()) return "Podcast name is required";
-    if (!form.target || parseInt(form.target) <= 0) return "Valid target amount is required";
+    // Target amount is now optional - only validate if provided
+    if (form.target && parseInt(form.target) <= 0) return "Goal amount must be greater than 0 if specified";
     if (!form.ticketPrice || parseInt(form.ticketPrice) <= 0) return "Valid ticket price is required";
     
     if (form.useDuration) {
       if (!form.durationValue || parseInt(form.durationValue) <= 0) return "Valid duration is required";
-    } else {
-      if (!form.endDate) return "End date is required";
+    } else if (!form.manualWinnerDraw) {
+      // Only require end date for automatic winner selection
+      if (!form.endDate) return "End date is required for automatic winner selection";
       if (form.endDate <= new Date()) return "End date must be in the future";
     }
     
@@ -131,13 +135,23 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
       const dTag = `fundraiser-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Convert amounts to millisats
-      const targetSats = parseInt(form.target);
+      const targetSats = form.target ? parseInt(form.target) : 0; // Default to 0 if no goal set
       const ticketPriceSats = parseInt(form.ticketPrice);
       const targetMillisats = targetSats * 1000;
       const ticketPriceMillisats = ticketPriceSats * 1000;
       
       // Convert end date to unix timestamp
-      const endDate = form.useDuration ? getEndDateFromDuration() : form.endDate!;
+      let endDate: Date;
+      if (form.useDuration) {
+        endDate = getEndDateFromDuration();
+      } else if (form.endDate) {
+        endDate = form.endDate;
+      } else if (form.manualWinnerDraw) {
+        // For manual draws without end date, set to far future so they stay active until winner is drawn
+        endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year from now
+      } else {
+        throw new Error('End date is required for automatic winner selection');
+      }
       const endTimestamp = Math.floor(endDate.getTime() / 1000);
 
       // Build tags
@@ -166,6 +180,11 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
       if (form.useDuration) {
         const durationInSeconds = getDurationInSeconds();
         tags.push(["duration", durationInSeconds.toString()]);
+      }
+
+      // Add manual winner draw flag
+      if (form.manualWinnerDraw) {
+        tags.push(["manual_draw", "true"]);
       }
 
       publishEvent({
@@ -314,11 +333,11 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="target">Target Amount (sats) *</Label>
+                <Label htmlFor="target">Goal Amount (sats) - Optional</Label>
                 <Input
                   id="target"
                   type="number"
-                  placeholder="100000"
+                  placeholder="e.g. 100000 (leave blank for no goal)"
                   value={form.target}
                   onChange={(e) => updateForm("target", e.target.value)}
                   disabled={isPending}
@@ -387,7 +406,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label>End Date *</Label>
+                  <Label>End Date {form.manualWinnerDraw ? "(optional for manual draws)" : "*"}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -399,7 +418,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
                         disabled={isPending}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {form.endDate ? format(form.endDate, "PPP") : "Pick an end date"}
+                        {form.endDate ? format(form.endDate, "PPP") : form.manualWinnerDraw ? "Pick end date (optional)" : "Pick an end date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -414,6 +433,24 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
                   </Popover>
                 </div>
               )}
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="manual-draw"
+                  checked={form.manualWinnerDraw}
+                  onCheckedChange={(checked) => updateForm("manualWinnerDraw", checked)}
+                  disabled={isPending}
+                />
+                <Label htmlFor="manual-draw">Manual winner selection (for live shows)</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {form.manualWinnerDraw 
+                  ? "You'll manually draw the winner during your show. Automatic selection is disabled."
+                  : "Winner will be automatically selected when the fundraiser ends."
+                }
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -434,14 +471,24 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
           </div>
 
           {/* Preview */}
-          {form.target && form.ticketPrice && (
+          {form.ticketPrice && (
             <div className="bg-muted p-4 rounded-lg space-y-2">
               <h4 className="font-semibold">Fundraiser Preview</h4>
               <div className="text-sm text-muted-foreground space-y-1">
-                <p>Target: {parseInt(form.target || "0").toLocaleString()} sats</p>
-                <p>Ticket Price: {parseInt(form.ticketPrice || "0").toLocaleString()} sats</p>
-                <p>Max Tickets: {Math.floor(parseInt(form.target || "0") / parseInt(form.ticketPrice || "1"))}</p>
-                <p>Potential Winner Prize: {Math.floor(parseInt(form.target || "0") / 2).toLocaleString()} sats</p>
+                {form.target ? (
+                  <>
+                    <p>Goal: {parseInt(form.target).toLocaleString()} sats</p>
+                    <p>Ticket Price: {parseInt(form.ticketPrice || "0").toLocaleString()} sats</p>
+                    <p>Max Tickets to Goal: {Math.floor(parseInt(form.target) / parseInt(form.ticketPrice || "1"))}</p>
+                    <p>Potential Winner Prize at Goal: {Math.floor(parseInt(form.target) / 2).toLocaleString()} sats</p>
+                  </>
+                ) : (
+                  <>
+                    <p>Goal: No specific goal set</p>
+                    <p>Ticket Price: {parseInt(form.ticketPrice || "0").toLocaleString()} sats</p>
+                    <p>Winner gets 50% of total raised</p>
+                  </>
+                )}
               </div>
             </div>
           )}

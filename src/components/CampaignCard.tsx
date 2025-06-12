@@ -140,9 +140,14 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{formatSats(totalRaised)} / {formatSats(fundraiser.target)}</span>
+              <span className="font-medium">
+                {fundraiser.target > 0 
+                  ? `${formatSats(totalRaised)} / ${formatSats(fundraiser.target)}`
+                  : `${formatSats(totalRaised)} raised`
+                }
+              </span>
             </div>
-            <Progress value={progressPercent} className="h-2" />
+            {fundraiser.target > 0 && <Progress value={progressPercent} className="h-2" />}
           </div>
 
           {/* Stats Grid */}
@@ -171,10 +176,12 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
             <div className="space-y-1">
               <div className="flex items-center text-muted-foreground">
                 <Clock className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">{fundraiser.isActive ? "Time Left" : "Ended"}</span>
+                <span className="truncate">
+                  {fundraiser.manualDraw ? "Draw Type" : fundraiser.isActive ? "Time Left" : "Ended"}
+                </span>
               </div>
               <p className="font-semibold truncate">
-                {fundraiser.isActive ? formatTimeRemaining(timeRemaining) : "Complete"}
+                {fundraiser.manualDraw ? "Manual Draw" : fundraiser.isActive ? formatTimeRemaining(timeRemaining) : "Complete"}
               </p>
             </div>
           </div>

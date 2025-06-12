@@ -49,10 +49,12 @@ export function useAutoWinnerSelection() {
       const now = Math.floor(Date.now() / 1000);
       
       // Find fundraisers created by the current user that have ended but no winner yet
+      // Skip fundraisers marked for manual draw
       const expiredUserFundraisers = fundraisers.filter(fundraiser => 
         fundraiser.pubkey === user.pubkey && 
         fundraiser.endDate <= now && 
         !fundraiser.isActive &&
+        !fundraiser.manualDraw && // Skip manual draw fundraisers
         !processedFundraisers.current.has(fundraiser.id)
       );
 
