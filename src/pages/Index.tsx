@@ -13,7 +13,6 @@ import { CampaignCard } from "@/components/CampaignCard";
 import { CreateCampaignDialog } from "@/components/CreateCampaignDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RelaySelector } from "@/components/RelaySelector";
-import { TestModeToggle } from "@/components/TestModeToggle";
 
 const Index = () => {
   const { user } = useCurrentUser();
@@ -175,10 +174,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Test Mode Toggle (Development Only) */}
-      <div className="container mx-auto max-w-6xl px-4 mb-6">
-        <TestModeToggle />
-      </div>
 
       {/* Campaigns Section */}
       <section className="py-8 sm:py-12 px-4">

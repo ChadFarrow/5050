@@ -10,11 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useTestUser } from "@/hooks/useTestUser";
-import { getRandomTestProfile } from "@/lib/test-profiles";
 import { generateFundraiserInvoice } from "@/lib/lightning-address";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
-import { useTestNostrPublish } from "@/hooks/useTestNostrPublish";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { useWallet } from "@/hooks/useWallet";
 import { useToastUtils } from "@/lib/shared-utils";
@@ -68,9 +65,7 @@ interface BuyTicketsDialogProps {
 
 export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDialogProps) {
   const { user } = useCurrentUser();
-  const { isTestMode } = useTestUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
-  const { mutate: publishTestEvent, isPending: isTestPending } = useTestNostrPublish();
   const { data: stats } = useCampaignStats(campaign.pubkey, campaign.dTag);
   const wallet = useWallet();
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
@@ -137,12 +132,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       
       let invoiceBolt11: string;
       
-      if (isTestMode) {
-        // In test mode, create a fake invoice that can't be paid
-        // This simulates the payment flow without actual Lightning transactions
-        invoiceBolt11 = `lnbc${totalCostSats}n1p0test${Math.random().toString(36).substr(2, 20)}fake_invoice_for_testing`;
-        console.log('Created fake invoice for test mode:', invoiceBolt11.substring(0, 30) + '...');
-      } else if (campaign.lightningAddress || campaign.lnurl) {
+      if (campaign.lightningAddress || campaign.lnurl) {
         // PROPER FUNDRAISING: Use fundraiser creator's Lightning address to generate invoice
         console.log('✅ Creating invoice from fundraiser Lightning address:', campaign.lightningAddress);
         console.log('✅ Payment will go to fundraiser creator, not buyer');
@@ -226,7 +216,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         created_at: Math.floor(Date.now() / 1000),
       };
 
-      const createOnSuccess = (profileName?: string) => (eventId: unknown) => {
+      const onSuccess = (eventId: unknown) => {
         console.log('Ticket purchase event published successfully:', eventId);
         console.log('Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
         
@@ -243,9 +233,8 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
           queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
         }, 2000);
 
-        // Show success toast with user indication
-        const userLabel = profileName || 'You';
-        toast.success("Tickets Purchased", `${userLabel} purchased ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`);
+        // Show success toast
+        toast.success("Tickets Purchased", `You purchased ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`);
 
         // Reset form and close dialog only after successful event publishing
         setTicketCount("1");
@@ -259,26 +248,8 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
       };
 
-      if (isTestMode) {
-        // Generate a fresh random profile for this purchase
-        const randomProfile = getRandomTestProfile();
-        console.log('Using test profile for purchase:', randomProfile.name, randomProfile.pubkey);
-        
-        // Use test publish method with fresh random profile
-        publishTestEvent({ 
-          event: eventData, 
-          options: { testProfile: randomProfile } 
-        }, { 
-          onSuccess: createOnSuccess(randomProfile.name), 
-          onError 
-        });
-      } else {
-        // Use normal publish method
-        publishEvent(eventData, { 
-          onSuccess: createOnSuccess(), 
-          onError 
-        });
-      }
+      // Publish event with normal method
+      publishEvent(eventData, { onSuccess, onError });
     } catch (error) {
       console.error("Error recording purchase:", error);
       toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
@@ -288,7 +259,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   };
 
   const handleClose = () => {
-    if (!isPending && !isTestPending && !isProcessingPayment && !isCreatingInvoice) {
+    if (!isPending && !isProcessingPayment && !isCreatingInvoice) {
       setTicketCount("1");
       setMessage("");
       setCurrentInvoice(null);
@@ -375,7 +346,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
                 max="100"
                 value={ticketCount}
                 onChange={(e) => setTicketCount(e.target.value)}
-                disabled={isPending || isTestPending || isProcessingPayment}
+                disabled={isPending || isProcessingPayment}
               />
             </div>
 
@@ -386,7 +357,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
                 placeholder="Good luck everyone!"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                disabled={isPending || isTestPending || isProcessingPayment}
+                disabled={isPending || isProcessingPayment}
                 rows={2}
               />
             </div>
@@ -448,15 +419,15 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
         {!showConfig && !currentInvoice && (
           <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button variant="outline" onClick={handleClose} disabled={isPending || isTestPending || isProcessingPayment || isCreatingInvoice}>
+            <Button variant="outline" onClick={handleClose} disabled={isPending || isProcessingPayment || isCreatingInvoice}>
               Cancel
             </Button>
             <Button 
               onClick={handleBuyTickets} 
-              disabled={isPending || isTestPending || isProcessingPayment || isCreatingInvoice || tickets <= 0}
+              disabled={isPending || isProcessingPayment || isCreatingInvoice || tickets <= 0}
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
             >
-              {(isPending || isTestPending || isProcessingPayment || isCreatingInvoice) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {(isPending || isProcessingPayment || isCreatingInvoice) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isCreatingInvoice ? "Creating Invoice..." : 
                isProcessingPayment ? "Recording Purchase..." : 
                `Buy ${tickets} Ticket${tickets > 1 ? 's' : ''}`}

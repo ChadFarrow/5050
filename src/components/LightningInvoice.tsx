@@ -8,7 +8,6 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/useToast';
 import { useWallet } from '@/hooks/useWallet';
 import { formatSats } from '@/lib/utils';
-import { isTestMode } from '@/lib/test-profiles';
 import type { LightningInvoice as LightningInvoiceType } from '@/types/lightning';
 
 interface LightningInvoiceProps {
@@ -23,22 +22,12 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
   const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
   const { toast } = useToast();
   const wallet = useWallet();
-  const inTestMode = isTestMode();
   
-  // Check if this is a test invoice
-  const isTestInvoice = invoice.bolt11.includes('fake_invoice_for_testing');
-  
-  // Check if this is a proper fundraiser invoice (starts with lnbc and not from our test wallet)
-  const isFundraiserInvoice = invoice.bolt11.startsWith('lnbc') && !isTestInvoice;
+  // Check if this is a proper fundraiser invoice (starts with lnbc)
+  const isFundraiserInvoice = invoice.bolt11.startsWith('lnbc');
 
   useEffect(() => {
     const generateQRCode = async () => {
-      // Skip QR code generation for test invoices
-      if (isTestInvoice) {
-        setQrCodeDataUrl('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50" font-size="12" text-anchor="middle" x="50">TEST MODE</text></svg>');
-        return;
-      }
-      
       try {
         const dataUrl = await QRCode.toDataURL(invoice.bolt11, {
           width: 256,
@@ -55,7 +44,7 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
     };
 
     generateQRCode();
-  }, [invoice.bolt11, isTestInvoice]);
+  }, [invoice.bolt11]);
 
   // Show payment prompt after 10 seconds to encourage users to confirm payment
   useEffect(() => {
@@ -124,33 +113,6 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
       setIsPayingWithWallet(false);
     }
   };
-
-  const handleSimulatePayment = async () => {
-    setIsPayingWithWallet(true);
-    try {
-      // Simulate payment delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      toast({
-        title: "Test Payment Simulated",
-        description: "Payment simulation completed successfully",
-      });
-      
-      if (onPaymentComplete) {
-        onPaymentComplete();
-      }
-    } catch (error) {
-      console.error('Payment simulation failed:', error);
-      toast({
-        title: "Simulation Failed",
-        description: "Failed to simulate payment",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPayingWithWallet(false);
-    }
-  };
-
 
   const amountSats = Math.floor(invoice.amount_msat / 1000);
   const expiresAt = new Date(invoice.expires_at * 1000);
@@ -236,43 +198,26 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
           </Button>
         </div>
 
-        {isTestInvoice ? (
-          <div className="space-y-2">
-            <Badge variant="secondary" className="w-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-              Test Mode - Simulated Payment
-            </Badge>
-            <Button 
-              className="w-full bg-orange-600 hover:bg-orange-700" 
-              disabled={isExpired || isPayingWithWallet}
-              onClick={handleSimulatePayment}
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              {isPayingWithWallet ? "Simulating..." : isExpired ? "Invoice Expired" : "Simulate Payment"}
-            </Button>
+        {isFundraiserInvoice ? (
+          <div className="text-sm text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-200 p-3 rounded mb-3">
+            ✅ <strong>Fundraiser Payment:</strong> This invoice was created by the fundraiser creator. Your payment will go directly to them!
           </div>
         ) : (
-          <>
-            {isFundraiserInvoice ? (
-              <div className="text-sm text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-200 p-3 rounded mb-3">
-                ✅ <strong>Fundraiser Payment:</strong> This invoice was created by the fundraiser creator. Your payment will go directly to them!
-              </div>
-            ) : !inTestMode && (
-              <div className="text-sm text-yellow-700 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-200 p-3 rounded mb-3">
-                ⚠️ <strong>Self-Payment Warning:</strong> This invoice is created with your wallet. When you pay it, you're paying yourself (which may fail). 
-                Fundraiser creator should add a Lightning address to their campaign.
-              </div>
-            )}
-            {wallet.isConnected && (
-              <Button 
-                className="w-full" 
-                disabled={isExpired || isPayingWithWallet}
-                onClick={handlePayWithWallet}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                {isPayingWithWallet ? "Paying..." : isExpired ? "Invoice Expired" : "Pay with Bitcoin Connect"}
-              </Button>
-            )}
-          </>
+          <div className="text-sm text-yellow-700 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-200 p-3 rounded mb-3">
+            ⚠️ <strong>Self-Payment Warning:</strong> This invoice is created with your wallet. When you pay it, you're paying yourself (which may fail). 
+            Fundraiser creator should add a Lightning address to their campaign.
+          </div>
+        )}
+        
+        {wallet.isConnected && (
+          <Button 
+            className="w-full" 
+            disabled={isExpired || isPayingWithWallet}
+            onClick={handlePayWithWallet}
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            {isPayingWithWallet ? "Paying..." : isExpired ? "Invoice Expired" : "Pay with Bitcoin Connect"}
+          </Button>
         )}
 
         <Button 
