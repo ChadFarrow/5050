@@ -16,8 +16,7 @@ export interface Fundraiser {
   podcastUrl?: string;
   episode?: string;
   image?: string;
-  lightningAddress?: string;
-  lnurl?: string;
+  nwc?: string;
   isActive: boolean;
   createdAt: number;
   manualDraw: boolean;
@@ -89,8 +88,7 @@ async function eventToFundraiser(event: NostrEvent, nostr: { query: (filters: ob
     podcastUrl: tags.get('podcast_url'),
     episode: tags.get('episode'),
     image: tags.get('image'),
-    lightningAddress: tags.get('lightning_address'),
-    lnurl: tags.get('lnurl'),
+    nwc: tags.get('nwc'),
     isActive,
     createdAt: event.created_at,
     manualDraw: isManualDraw,

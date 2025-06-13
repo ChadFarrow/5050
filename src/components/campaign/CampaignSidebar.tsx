@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, User, Trophy } from "lucide-react";
+import { ShoppingCart, User, Trophy, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,6 +8,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserTickets } from "@/hooks/useCampaignStats";
 import { useAuthorDisplay } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
+import { useQueryClient } from '@tanstack/react-query';
 import type { Campaign } from "@/hooks/useCampaigns";
 import type { CampaignStats } from "@/hooks/useCampaignStats";
 
@@ -18,8 +19,10 @@ interface CampaignSidebarProps {
 
 export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
   const [showBuyDialog, setShowBuyDialog] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useCurrentUser();
   const { displayName: creatorName, profileImage: creatorImage } = useAuthorDisplay(campaign.pubkey);
+  const queryClient = useQueryClient();
   
   const { data: userTickets } = useUserTickets(
     campaign.pubkey, 
@@ -35,6 +38,19 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
 
   const isExpired = Date.now() > campaign.endDate * 1000;
   const hasWinner = !!stats?.result;
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      console.log('🔄 Manually refreshing campaign stats...');
+      await queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
+      console.log('✅ Manual refresh completed');
+    } catch (error) {
+      console.error('❌ Manual refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return (
     <>
@@ -117,7 +133,18 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
         {/* Campaign Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Details</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              Details
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="h-8 w-8 p-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex justify-between">
