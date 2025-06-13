@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { generateFundraiserInvoiceNWC } from "@/lib/nwc";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { useWallet } from "@/hooks/useWallet";
@@ -96,6 +97,8 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       return;
     }
 
+    // Don't generate test user here - do it right before publishing event
+
     if (tickets <= 0) {
       toast.error("Invalid Amount", "Please enter a valid number of tickets");
       return;
@@ -121,11 +124,42 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       // Convert from millisats to sats for WebLN
       const totalCostSats = Math.floor(totalCost / 1000);
       console.log(`Creating invoice: ${totalCostSats} sats (${totalCost} msats) for ${tickets} tickets`);
+      console.log('Campaign payment info:', { 
+        nwc: campaign.nwc ? 'configured' : 'not configured',
+        hasNWC: !!campaign.nwc
+      });
       
-      const invoiceBolt11 = await wallet.createInvoice(
-        totalCostSats, // amount in sats
-        `${tickets} ticket${tickets > 1 ? 's' : ''} for ${campaign.title}`
-      );
+      let invoiceBolt11: string;
+      
+      if (campaign.nwc) {
+        // PROPER FUNDRAISING: Use fundraiser creator's NWC connection to generate invoice
+        console.log('✅ Creating invoice from fundraiser NWC connection');
+        console.log('✅ Payment will go to fundraiser creator, not buyer');
+        
+        try {
+          invoiceBolt11 = await generateFundraiserInvoiceNWC(
+            campaign,
+            totalCost, // amount in millisats
+            tickets
+          );
+          console.log('✅ Successfully created NWC invoice');
+        } catch (error) {
+          console.error('❌ Failed to create NWC invoice:', error);
+          toast.error("Invoice Creation Failed", `Could not create invoice from fundraiser's NWC connection: ${error.message}`);
+          return;
+        }
+      } else {
+        // FALLBACK: Use buyer's wallet (self-payment issue)
+        console.warn('⚠️  NO NWC CONNECTION: Fundraiser has no NWC connection configured');
+        console.warn('⚠️  Falling back to buyer wallet (self-payment issue)');
+        console.warn('⚠️  Fundraiser creator pubkey:', campaign.pubkey);
+        console.warn('⚠️  This means payments go to YOU, not the fundraiser creator');
+        
+        invoiceBolt11 = await wallet.createInvoice(
+          totalCostSats, // amount in sats
+          `${tickets} ticket${tickets > 1 ? 's' : ''} for ${campaign.title}`
+        );
+      }
       
       console.log('Invoice created successfully:', invoiceBolt11.substring(0, 50) + '...');
 
@@ -174,42 +208,57 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         ["payment_hash", currentInvoice.payment_hash],
       ];
 
-      publishEvent({
+      const eventData = {
         kind: 31951,
         content: message.trim(),
         tags,
-      }, {
-        onSuccess: (eventId) => {
-          console.log('Ticket purchase event published successfully:', eventId);
-          console.log('Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
-          
-          // Invalidate fundraisers query so the list updates immediately
-          queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
-          // Invalidate campaign stats for this fundraiser so stats update immediately
-          queryClient.invalidateQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-          
-          console.log('Queries invalidated successfully');
-          
-          // Also force a refresh after a small delay to ensure the event has propagated
-          setTimeout(() => {
-            console.log('Forcing query refresh after delay...');
-            queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-          }, 2000);
+        created_at: Math.floor(Date.now() / 1000),
+      };
 
-          // Show success toast
-          toast.campaign.ticketsPurchased(tickets, formatSats(totalCost));
+      const onSuccess = (eventId: unknown) => {
+        console.log('Ticket purchase event published successfully:', eventId);
+        console.log('Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
+        
+        // Invalidate fundraisers query so the list updates immediately
+        queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
+        // Invalidate campaign stats for this fundraiser so stats update immediately
+        queryClient.invalidateQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
+        
+        console.log('Queries invalidated successfully');
+        
+        // Also force multiple refreshes with increasing delays to ensure the event has propagated
+        setTimeout(() => {
+          console.log('Forcing query refresh after 2s delay...');
+          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
+        }, 2000);
+        
+        setTimeout(() => {
+          console.log('Forcing query refresh after 5s delay...');
+          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
+        }, 5000);
+        
+        setTimeout(() => {
+          console.log('Forcing query refresh after 10s delay...');
+          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
+        }, 10000);
 
-          // Reset form and close dialog only after successful event publishing
-          setTicketCount("1");
-          setMessage("");
-          setCurrentInvoice(null);
-          onOpenChange(false);
-        },
-        onError: (error) => {
-          console.error('Failed to publish ticket purchase event:', error);
-          toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
-        }
-      });
+        // Show success toast
+        toast.success("Tickets Purchased", `You purchased ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`);
+
+        // Reset form and close dialog only after successful event publishing
+        setTicketCount("1");
+        setMessage("");
+        setCurrentInvoice(null);
+        onOpenChange(false);
+      };
+
+      const onError = (error: unknown) => {
+        console.error('Failed to publish ticket purchase event:', error);
+        toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
+      };
+
+      // Publish event with normal method
+      publishEvent(eventData, { onSuccess, onError });
     } catch (error) {
       console.error("Error recording purchase:", error);
       toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");

@@ -15,6 +15,7 @@ import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
+import { useWallet } from '@/hooks/useWallet';
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -36,6 +37,7 @@ interface FundraiserForm {
   durationUnit: string;
   image: string;
   manualWinnerDraw: boolean;
+  lightningAddress: string;
 }
 
 const initialForm: FundraiserForm = {
@@ -53,6 +55,7 @@ const initialForm: FundraiserForm = {
   durationUnit: "hours",
   image: "",
   manualWinnerDraw: false,
+  lightningAddress: "",
 };
 
 export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
@@ -60,6 +63,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const wallet = useWallet();
   const [form, setForm] = useState<FundraiserForm>(initialForm);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
@@ -115,6 +119,15 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
       toast({
         title: "Error",
         description: "You must be logged in to create a fundraiser",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!wallet.isConnected) {
+      toast({
+        title: "Error",
+        description: "You must connect your Lightning wallet to create a fundraiser",
         variant: "destructive",
       });
       return;
@@ -187,46 +200,41 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
         tags.push(["manual_draw", "true"]);
       }
 
+      // Add Lightning address from connected wallet
+      if (wallet.nodeInfo?.alias) {
+        // Convert node alias to Lightning address format
+        const lightningAddress = `${wallet.nodeInfo.alias}@getalby.com`;
+        tags.push(["lightning_address", lightningAddress]);
+      }
+
       publishEvent({
         kind: 31950,
         content: form.content.trim(),
         tags,
       }, {
         onSuccess: (eventId) => {
-          console.log('Fundraiser published successfully:', eventId);
-          
-          // Invalidate fundraisers query so the list updates immediately
-          queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
-          
-          // Force a refresh after a small delay to ensure the event has propagated
-          setTimeout(() => {
-            console.log('Forcing fundraisers query refresh after delay...');
-            queryClient.refetchQueries({ queryKey: ['fundraisers'] });
-          }, 2000);
-
+          console.log('Fundraiser created:', eventId);
           toast({
-            title: "Fundraiser Created!",
-            description: "Your fundraiser has been published to Nostr",
+            title: "Success",
+            description: "Fundraiser created successfully",
           });
-
-          // Reset form and close dialog
-          setForm(initialForm);
+          queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
           onOpenChange(false);
         },
         onError: (error) => {
-          console.error('Failed to publish fundraiser:', error);
+          console.error('Failed to create fundraiser:', error);
           toast({
             title: "Error",
-            description: "Failed to create fundraiser. Please try again.",
+            description: "Failed to create fundraiser",
             variant: "destructive",
           });
         }
       });
     } catch (error) {
-      console.error("Error creating campaign:", error);
+      console.error('Error creating fundraiser:', error);
       toast({
-        title: "Validation Error",
-        description: "Failed to prepare fundraiser data. Please check your inputs.",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create fundraiser",
         variant: "destructive",
       });
     }

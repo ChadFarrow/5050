@@ -24,6 +24,7 @@ A fundraiser is an addressable event that defines a 50/50 raffle for a podcaster
 - `podcast_url` - podcast website or RSS feed URL
 - `episode` - specific episode this fundraiser is for
 - `duration` - fundraiser duration in seconds (alternative to calculating from creation time and end_date)
+- `nwc` - Nostr Wallet Connect connection string for generating invoices (e.g., nostr+walletconnect://...)
 
 **Content:** Additional fundraiser details in plaintext
 
@@ -41,7 +42,8 @@ Example:
     ["end_date", "1704067200"],
     ["podcast", "The Weekly Show"],
     ["podcast_url", "https://example.com/podcast"],
-    ["image", "https://example.com/campaign-image.jpg"]
+    ["image", "https://example.com/campaign-image.jpg"],
+    ["nwc", "nostr+walletconnect://relay.example.com?relay=wss://relay.example.com&secret=...&pubkey=..."]
   ],
   "pubkey": "...",
   "created_at": 1703462400,

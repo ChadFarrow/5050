@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { ShoppingCart, User, Trophy, TestTube } from "lucide-react";
+import { ShoppingCart, User, Trophy, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserTickets } from "@/hooks/useCampaignStats";
-import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useAuthorDisplay } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
@@ -18,43 +17,12 @@ interface CampaignSidebarProps {
   stats?: CampaignStats;
 }
 
-// Generate a random test user pubkey
-function generateTestUserPubkey(): string {
-  const chars = '0123456789abcdef';
-  let result = '';
-  for (let i = 0; i < 64; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-}
-
-// Generate a fake payment hash
-function generateFakePaymentHash(): string {
-  const chars = '0123456789abcdef';
-  let result = '';
-  for (let i = 0; i < 64; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-}
-
-// Generate a fake bolt11 invoice
-function generateFakeBolt11(amount: number): string {
-  const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
-  let result = 'lnbc' + amount + 'n1p';
-  for (let i = 0; i < 100; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-}
-
 export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
   const [showBuyDialog, setShowBuyDialog] = useState(false);
-  const [isGeneratingTestTickets, setIsGeneratingTestTickets] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useCurrentUser();
-  const { mutate: publishEvent } = useNostrPublish();
-  const queryClient = useQueryClient();
   const { displayName: creatorName, profileImage: creatorImage } = useAuthorDisplay(campaign.pubkey);
+  const queryClient = useQueryClient();
   
   const { data: userTickets } = useUserTickets(
     campaign.pubkey, 
@@ -70,92 +38,17 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
 
   const isExpired = Date.now() > campaign.endDate * 1000;
   const hasWinner = !!stats?.result;
-  const isCreator = user?.pubkey === campaign.pubkey;
 
-  const generateTestTickets = async () => {
-    if (!user || !isCreator) return;
-
-    setIsGeneratingTestTickets(true);
-    
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      // Generate 10 test ticket purchases from random users
-      const testMessages = [
-        "Good luck everyone! 🍀",
-        "Hope I win! 🤞",
-        "Supporting the podcast! 🎧",
-        "Let's go! 🚀",
-        "Test purchase for debugging",
-        "Random test ticket",
-        "Supporting the show!",
-        "Hope this helps with testing",
-        "Test user purchase",
-        "Debugging ticket purchase"
-      ];
-
-      // Create campaign coordinate
-      const campaignCoordinate = `31950:${campaign.pubkey}:${campaign.dTag}`;
-
-      for (let i = 0; i < 10; i++) {
-        const testUserPubkey = generateTestUserPubkey();
-        const ticketCount = Math.floor(Math.random() * 3) + 1; // 1-3 tickets
-        const totalCost = ticketCount * campaign.ticketPrice;
-        const paymentHash = generateFakePaymentHash();
-        const bolt11 = generateFakeBolt11(Math.floor(totalCost / 1000)); // Convert to sats for bolt11
-        
-        // Generate unique purchase ID
-        const purchaseId = `test-purchase-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`;
-
-        // Build tags for ticket purchase event
-        const tags: string[][] = [
-          ["d", purchaseId],
-          ["a", campaignCoordinate],
-          ["amount", totalCost.toString()],
-          ["tickets", ticketCount.toString()],
-          ["bolt11", bolt11],
-          ["payment_hash", paymentHash],
-          ["test_ticket", "true"], // Mark as test ticket
-        ];
-
-        // Use the test user's pubkey to simulate different users
-        const testEvent = {
-          kind: 31951,
-          content: testMessages[i],
-          tags,
-          pubkey: testUserPubkey,
-          created_at: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 3600), // Random time in last hour
-        };
-
-        // For test tickets, we'll publish them with our user but include the test pubkey in tags
-        publishEvent({
-          ...testEvent,
-          pubkey: user.pubkey, // Use our pubkey for publishing
-          tags: [...tags, ["test_user", testUserPubkey]], // Add the test user pubkey as a tag
-        }, {
-          onSuccess: (eventId) => {
-            console.log(`Test ticket ${i + 1}/10 published:`, eventId);
-            
-            if (i === 9) { // Last ticket
-              // Invalidate queries to refresh the UI
-              setTimeout(() => {
-                queryClient.invalidateQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-                queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
-                console.log('✅ All 10 test tickets created successfully!');
-              }, 1000);
-            }
-          },
-          onError: (error) => {
-            console.error(`Failed to create test ticket ${i + 1}:`, error);
-          }
-        });
-
-        // Small delay between purchases to avoid overwhelming the system
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-
+      console.log('🔄 Manually refreshing campaign stats...');
+      await queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
+      console.log('✅ Manual refresh completed');
     } catch (error) {
-      console.error('Error generating test tickets:', error);
+      console.error('❌ Manual refresh failed:', error);
     } finally {
-      setIsGeneratingTestTickets(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -229,19 +122,6 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
                 Buy Tickets
               </Button>
               
-              {/* Test Button - Only show for campaign creator */}
-              {isCreator && import.meta.env.DEV && (
-                <Button 
-                  onClick={generateTestTickets}
-                  disabled={isGeneratingTestTickets}
-                  variant="outline"
-                  className="w-full border-orange-200 text-orange-600 hover:bg-orange-50"
-                  size="sm"
-                >
-                  <TestTube className="h-4 w-4 mr-2" />
-                  {isGeneratingTestTickets ? "Generating..." : "Add 10 Test Tickets"}
-                </Button>
-              )}
               
               <div className="text-center text-sm text-muted-foreground">
                 {formatSats(campaign.ticketPrice)} per ticket
@@ -253,7 +133,18 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
         {/* Campaign Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Details</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              Details
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="h-8 w-8 p-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex justify-between">

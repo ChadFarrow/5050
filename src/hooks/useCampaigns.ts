@@ -16,6 +16,7 @@ export interface Fundraiser {
   podcastUrl?: string;
   episode?: string;
   image?: string;
+  nwc?: string;
   isActive: boolean;
   createdAt: number;
   manualDraw: boolean;
@@ -87,6 +88,7 @@ async function eventToFundraiser(event: NostrEvent, nostr: { query: (filters: ob
     podcastUrl: tags.get('podcast_url'),
     episode: tags.get('episode'),
     image: tags.get('image'),
+    nwc: tags.get('nwc'),
     isActive,
     createdAt: event.created_at,
     manualDraw: isManualDraw,

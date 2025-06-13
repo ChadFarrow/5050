@@ -22,6 +22,9 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
   const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
   const { toast } = useToast();
   const wallet = useWallet();
+  
+  // Check if this is a proper fundraiser invoice (starts with lnbc)
+  const isFundraiserInvoice = invoice.bolt11.startsWith('lnbc');
 
   useEffect(() => {
     const generateQRCode = async () => {
@@ -195,6 +198,17 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
           </Button>
         </div>
 
+        {isFundraiserInvoice ? (
+          <div className="text-sm text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-200 p-3 rounded mb-3">
+            ✅ <strong>Fundraiser Payment:</strong> This invoice was created by the fundraiser creator via NWC. Your payment will go directly to them!
+          </div>
+        ) : (
+          <div className="text-sm text-yellow-700 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-200 p-3 rounded mb-3">
+            ⚠️ <strong>Self-Payment Warning:</strong> This invoice is created with your wallet. When you pay it, you're paying yourself (which may fail). 
+            Fundraiser creator should add an NWC connection to their campaign.
+          </div>
+        )}
+        
         {wallet.isConnected && (
           <Button 
             className="w-full" 

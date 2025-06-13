@@ -174,6 +174,7 @@ const Index = () => {
         </div>
       </section>
 
+
       {/* Campaigns Section */}
       <section className="py-8 sm:py-12 px-4">
         <div className="container mx-auto max-w-6xl">
