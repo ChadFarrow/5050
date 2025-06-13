@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@/hooks/useWallet';
-import { isValidNWCConnection, detectWalletNWC } from '@/lib/nwc';
+import { detectWalletNWC } from '@/lib/nwc';
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -71,14 +71,20 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
   const [isDetectingNWC, setIsDetectingNWC] = useState(false);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    try {
+      console.log('Updating form field:', field, 'with value type:', typeof value);
+      setForm(prev => ({ ...prev, [field]: value }));
+    } catch (error) {
+      console.error('Error updating form field:', field, error);
+      // Don't let form updates crash the app
+    }
   };
 
   const handleDetectNWC = async () => {
     if (!wallet.isConnected) {
       toast({
         title: "No Wallet Connected",
-        description: "Please connect your wallet first to detect NWC connection",
+        description: "Please connect your wallet first",
         variant: "destructive",
       });
       return;
@@ -86,34 +92,45 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
 
     setIsDetectingNWC(true);
     try {
+      console.log('🔍 Starting NWC detection from CreateCampaignDialog...');
+      console.log('💻 Current browser environment:', {
+        userAgent: navigator.userAgent,
+        webln: !!window.webln,
+        alby: 'alby' in window,
+        walletConnected: wallet.isConnected
+      });
+      
       const detectedNWC = await detectWalletNWC();
       if (detectedNWC) {
-        updateForm('nwcConnection', detectedNWC);
+        console.log('✅ NWC detected, length:', detectedNWC.length);
+        setForm(prev => ({
+          ...prev,
+          nwcConnection: detectedNWC
+        }));
         toast({
           title: "NWC Detected",
-          description: "Found NWC connection from your connected wallet!",
+          description: "Found NWC connection from your wallet!",
         });
       } else {
-        // Provide helpful guidance based on detected wallet
-        if ((window as any).alby) {
-          toast({
-            title: "Alby NWC Setup Required",
-            description: "Please create an NWC connection in your Alby wallet: Settings → Developer → Nostr Wallet Connect → Create Connection",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "NWC Setup Required",
-            description: "Please create an NWC connection in your wallet that supports Nostr Wallet Connect",
-            variant: "destructive",
-          });
+        console.log('❌ No NWC found - showing helpful error');
+        
+        // Show specific instructions based on detected wallet
+        let instructions = "Create an NWC connection in your wallet and paste it above.";
+        if ('alby' in window) {
+          instructions = "In Alby Hub: Settings → Developer → Nostr Wallet Connect → Create Connection → Copy the connection string";
         }
+        
+        toast({
+          title: "No NWC Found", 
+          description: instructions,
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error('Failed to detect wallet NWC:', error);
+      console.error('❌ NWC detection failed:', error);
       toast({
         title: "Detection Failed",
-        description: "Failed to detect NWC from your wallet. Please create an NWC connection manually.",
+        description: "Could not detect NWC from your wallet. Try creating one manually.",
         variant: "destructive",
       });
     } finally {
@@ -147,27 +164,38 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
   };
 
   const validateForm = (): string | null => {
-    if (!form.title.trim()) return "Title is required";
-    if (!form.description.trim()) return "Description is required";
-    if (!form.podcast.trim()) return "Podcast name is required";
-    // Target amount is now optional - only validate if provided
-    if (form.target && parseInt(form.target) <= 0) return "Goal amount must be greater than 0 if specified";
-    if (!form.ticketPrice || parseInt(form.ticketPrice) <= 0) return "Valid ticket price is required";
-    
-    // Validate NWC connection if provided
-    if (form.nwcConnection.trim() && !isValidNWCConnection(form.nwcConnection.trim())) {
-      return "Invalid NWC connection format. Please enter a valid nostr+walletconnect:// URL";
+    try {
+      if (!form.title.trim()) return "Title is required";
+      if (!form.description.trim()) return "Description is required";
+      if (!form.podcast.trim()) return "Podcast name is required";
+      // Target amount is now optional - only validate if provided
+      if (form.target && parseInt(form.target) <= 0) return "Goal amount must be greater than 0 if specified";
+      if (!form.ticketPrice || parseInt(form.ticketPrice) <= 0) return "Valid ticket price is required";
+      
+      // Basic NWC validation during form submission only
+      if (form.nwcConnection && form.nwcConnection.trim().length > 0) {
+        const nwc = form.nwcConnection.trim();
+        if (!nwc.startsWith('nostr+walletconnect://')) {
+          return "NWC connection must start with nostr+walletconnect://";
+        }
+        if (nwc.length < 50) {
+          return "NWC connection appears incomplete";
+        }
+      }
+      
+      if (form.useDuration) {
+        if (!form.durationValue || parseInt(form.durationValue) <= 0) return "Valid duration is required";
+      } else if (!form.manualWinnerDraw) {
+        // Only require end date for automatic winner selection
+        if (!form.endDate) return "End date is required for automatic winner selection";
+        if (form.endDate <= new Date()) return "End date must be in the future";
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Form validation error:', error);
+      return "Validation error occurred. Please refresh the page and try again.";
     }
-    
-    if (form.useDuration) {
-      if (!form.durationValue || parseInt(form.durationValue) <= 0) return "Valid duration is required";
-    } else if (!form.manualWinnerDraw) {
-      // Only require end date for automatic winner selection
-      if (!form.endDate) return "End date is required for automatic winner selection";
-      if (form.endDate <= new Date()) return "End date must be in the future";
-    }
-    
-    return null;
   };
 
   const handleSubmit = async () => {
@@ -538,12 +566,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
               <CardTitle className="text-sm flex items-center gap-2">
                 <Zap className="h-4 w-4 text-orange-600" />
                 Payment Setup
-                {form.nwcConnection && (
-                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    <Zap className="h-3 w-3 mr-1" />
-                    Connected
-                  </Badge>
-                )}
               </CardTitle>
               <CardDescription className="text-xs">
                 Configure how you'll receive payments from ticket sales. Without this, buyers will pay themselves (which fails).
@@ -556,50 +578,52 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
                   id="nwcConnection"
                   type="text"
                   placeholder="nostr+walletconnect://..."
-                  value={form.nwcConnection}
-                  onChange={(e) => updateForm("nwcConnection", e.target.value)}
-                  disabled={isPending || isDetectingNWC}
+                  value={form.nwcConnection || ""}
+                  onChange={(e) => {
+                    const value = e.target.value || "";
+                    console.log('📝 NWC onChange, length:', value.length);
+                    setForm(prev => ({
+                      ...prev,
+                      nwcConnection: value
+                    }));
+                  }}
+                  disabled={isPending}
                   className="text-sm"
                 />
               </div>
               
-              {wallet.isConnected && (
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={handleDetectNWC}
-                  disabled={isPending || isDetectingNWC}
-                  className="w-full"
-                >
-                  <Wallet className="h-4 w-4 mr-2" />
-                  {isDetectingNWC ? "Checking..." : "Use Current Wallet"}
-                </Button>
+              {form.nwcConnection && form.nwcConnection.length > 50 && (
+                <div className="text-xs text-green-600 flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  Connection string detected ({form.nwcConnection.length} characters)
+                </div>
               )}
               
               {!form.nwcConnection && (
                 <Alert>
                   <Zap className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    <strong>⚠️ Payment Setup Required:</strong> Without an NWC connection, ticket buyers will try to pay themselves, which typically fails. Set up NWC in your wallet for proper fundraising.
+                    <strong>⚠️ Payment Setup Required:</strong> Without an NWC connection, ticket buyers will try to pay themselves, which typically fails.
                   </AlertDescription>
                 </Alert>
               )}
               
-              {wallet.isConnected && (window as any).alby && !form.nwcConnection && (
-                <div className="text-xs p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
-                  <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">💡 Alby Wallet Detected</p>
-                  <p className="text-blue-700 dark:text-blue-300">
-                    Create an NWC connection: <span className="font-mono">Settings → Developer → Nostr Wallet Connect → Create Connection</span>
-                  </p>
-                </div>
-              )}
-              
-              <p className="text-xs text-muted-foreground">
-                {wallet.isConnected 
-                  ? "Click 'Use Current Wallet' to auto-detect NWC, or create an NWC connection in your wallet and paste it above"
-                  : "Create an NWC connection in your wallet that supports Nostr Wallet Connect and paste it above"
-                }
-              </p>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <p>
+                  Create a new NWC connection for this fundraiser:
+                </p>
+                {'alby' in window && (
+                  <div className="bg-blue-50 dark:bg-blue-950 p-2 rounded border">
+                    <p className="font-medium text-blue-800 dark:text-blue-200">📝 Alby Hub Setup:</p>
+                    <p className="text-blue-700 dark:text-blue-300">
+                      1. Open Alby Hub → Settings → Developer<br/>
+                      2. Click "Nostr Wallet Connect"<br/>
+                      3. Click "Create Connection"<br/>
+                      4. Copy the connection string and paste above
+                    </p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 

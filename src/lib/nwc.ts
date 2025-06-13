@@ -1,7 +1,6 @@
 // Nostr Wallet Connect (NWC) utilities for generating invoices from fundraiser creators
 
-import { SimplePool, Event as NostrEvent, finalizeEvent, UnsignedEvent, nip04 } from 'nostr-tools';
-import { getEventHash, getSignature } from 'nostr-tools';
+import { SimplePool, Event as NostrEvent, finalizeEvent, UnsignedEvent, nip04, getPublicKey } from 'nostr-tools';
 
 export interface NWCConnectionInfo {
   walletPubkey: string;
@@ -39,17 +38,14 @@ export interface NWCMakeInvoiceResponse {
  */
 export function parseNWCConnection(nwcString: string): NWCConnectionInfo {
   try {
-    console.log('🔍 Parsing NWC connection:', nwcString.slice(0, 50) + '...');
+    // Basic format check first
+    if (!nwcString.startsWith('nostr+walletconnect://')) {
+      throw new Error('NWC connection must start with nostr+walletconnect://');
+    }
     
     // Remove the nostr+walletconnect:// prefix
     const cleanUrl = nwcString.replace('nostr+walletconnect://', 'https://');
     const url = new URL(cleanUrl);
-    
-    console.log('📋 URL components:', {
-      hostname: url.hostname,
-      search: url.search,
-      searchParams: Array.from(url.searchParams.entries())
-    });
     
     const relayUrl = url.searchParams.get('relay');
     const secret = url.searchParams.get('secret');
@@ -59,15 +55,8 @@ export function parseNWCConnection(nwcString: string): NWCConnectionInfo {
     
     // If no pubkey in query params, check if hostname is the pubkey (Alby format)
     if (!walletPubkey && url.hostname && url.hostname.length === 64) {
-      console.log('📱 Using hostname as wallet pubkey (Alby format)');
       walletPubkey = url.hostname;
     }
-    
-    console.log('🔑 Extracted components:', {
-      relayUrl: relayUrl?.slice(0, 30) + '...',
-      secret: secret?.slice(0, 10) + '...',
-      walletPubkey: walletPubkey?.slice(0, 10) + '...'
-    });
     
     if (!relayUrl || !secret || !walletPubkey) {
       throw new Error(`Invalid NWC connection string - missing required parameters. Found: relay=${!!relayUrl}, secret=${!!secret}, pubkey=${!!walletPubkey}`);
@@ -79,8 +68,7 @@ export function parseNWCConnection(nwcString: string): NWCConnectionInfo {
       secret
     };
   } catch (error) {
-    console.error('❌ Failed to parse NWC connection:', error);
-    throw new Error(`Failed to parse NWC connection: ${error.message}`);
+    throw new Error(`Failed to parse NWC connection: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
   }
 }
 
@@ -97,7 +85,6 @@ export async function generateInvoiceFromNWC(
     console.log('Creating NWC invoice with:', { amountMsats, description });
     
     // Create the NWC request event
-    const requestId = Math.random().toString(36).substring(2, 15);
     const request: NWCMakeInvoiceRequest = {
       method: 'make_invoice',
       params: {
@@ -118,6 +105,16 @@ export async function generateInvoiceFromNWC(
       throw new Error(`Failed to encrypt NWC request: ${encryptError.message}`);
     }
     
+    // Convert secret to bytes for signing
+    const secretBytes = new Uint8Array(32);
+    const secretHex = connectionInfo.secret;
+    for (let i = 0; i < 32; i++) {
+      secretBytes[i] = parseInt(secretHex.substr(i * 2, 2), 16);
+    }
+    
+    // Get public key for the unsigned event
+    const pubkey = getPublicKey(secretBytes);
+    
     // Create unsigned event
     const unsignedEvent: UnsignedEvent = {
       kind: 23194, // NWC request kind
@@ -125,15 +122,9 @@ export async function generateInvoiceFromNWC(
       tags: [
         ['p', connectionInfo.walletPubkey] // Target wallet pubkey
       ],
-      created_at: Math.floor(Date.now() / 1000)
+      created_at: Math.floor(Date.now() / 1000),
+      pubkey
     };
-    
-    // Convert secret to bytes for signing
-    const secretBytes = new Uint8Array(32);
-    const secretHex = connectionInfo.secret;
-    for (let i = 0; i < 32; i++) {
-      secretBytes[i] = parseInt(secretHex.substr(i * 2, 2), 16);
-    }
     
     // Sign the event
     const signedEvent = finalizeEvent(unsignedEvent, secretBytes);
@@ -254,6 +245,17 @@ export async function generateInvoiceFromNWC(
  */
 export function isValidNWCConnection(nwcString: string): boolean {
   try {
+    // Quick basic checks first to avoid expensive parsing on incomplete strings
+    if (!nwcString || typeof nwcString !== 'string') {
+      return false;
+    }
+    
+    // Only attempt full parsing if the string looks reasonably complete
+    if (!nwcString.startsWith('nostr+walletconnect://') || nwcString.length < 50) {
+      return false;
+    }
+    
+    // If it looks like a complete NWC string, then do full validation
     parseNWCConnection(nwcString);
     return true;
   } catch {
@@ -266,7 +268,21 @@ export function isValidNWCConnection(nwcString: string): boolean {
  */
 export async function detectWalletNWC(): Promise<string | null> {
   try {
-    console.log('🔍 Starting NWC detection...');
+    console.log('🔍 Starting enhanced NWC detection...');
+    
+    // First, let's do a comprehensive window object inspection
+    console.log('🌐 Complete window object inspection for debugging:');
+    console.log('🔍 Window keys containing wallet-related terms:', 
+      Object.keys(window).filter(key => 
+        key.toLowerCase().includes('alby') || 
+        key.toLowerCase().includes('mutiny') || 
+        key.toLowerCase().includes('nwc') ||
+        key.toLowerCase().includes('wallet') ||
+        key.toLowerCase().includes('bitcoin') ||
+        key.toLowerCase().includes('webln') ||
+        key.toLowerCase().includes('nostr')
+      )
+    );
     
     // Check if WebLN is available
     if (!window.webln) {
@@ -275,6 +291,8 @@ export async function detectWalletNWC(): Promise<string | null> {
     }
     
     console.log('✅ WebLN provider found');
+    console.log('🔍 WebLN object keys:', Object.keys(window.webln));
+    console.log('🔍 WebLN object methods:', Object.keys(window.webln).filter(key => typeof (window.webln as any)[key] === 'function'));
     
     // Get wallet info for debugging
     if (typeof window.webln.getInfo === 'function') {
@@ -290,21 +308,65 @@ export async function detectWalletNWC(): Promise<string | null> {
       }
     }
     
-    // Check window object for wallet-specific properties
-    console.log('🔍 Checking for wallet-specific APIs...');
-    const windowKeys = Object.keys(window).filter(key => 
-      key.toLowerCase().includes('alby') || 
-      key.toLowerCase().includes('mutiny') || 
-      key.toLowerCase().includes('nwc') ||
-      key.toLowerCase().includes('wallet')
-    );
-    console.log('📋 Wallet-related window properties:', windowKeys);
+    // Check for bitcoin connect provider
+    console.log('🔍 Checking for bitcoin connect in window...');
+    if ('bitcoinConnect' in window) {
+      console.log('✅ bitcoinConnect found in window');
+    } else {
+      console.log('❌ bitcoinConnect not found in window');
+    }
     
-    // Method 1: Check for Alby wallet
-    if ((window as any).alby) {
+    // Check for specific wallet browser extensions
+    console.log('🔍 Detailed wallet extension check:');
+    console.log('  - Alby extension:', 'alby' in window);
+    console.log('  - Mutiny extension:', 'mutiny' in window);
+    console.log('  - Generic webln:', !!window.webln);
+    console.log('  - Bitcoin Connect:', 'bitcoinConnect' in window);
+    
+    // Enhanced Method 1: Check for Alby wallet with more API methods
+    if ('alby' in window) {
       console.log('🐝 Alby wallet detected, checking for NWC...');
-      const alby = (window as any).alby;
+      const alby = (window as { alby: Record<string, unknown> }).alby;
       console.log('🔧 Alby methods:', Object.keys(alby));
+      
+      // Try newer Alby Connect API
+      if (typeof alby.enable === 'function') {
+        try {
+          console.log('🔄 Enabling Alby Connect...');
+          await (alby.enable as () => Promise<void>)();
+          console.log('✅ Alby Connect enabled');
+        } catch (error) {
+          console.log('⚠️ Alby Connect enable failed:', error);
+        }
+      }
+      
+      // Check if we can get a direct NWC connection string
+      if (typeof alby.getConnectorString === 'function') {
+        try {
+          const connectorString = await (alby.getConnectorString as () => Promise<string>)();
+          console.log('🔗 Alby connector string:', connectorString);
+          if (connectorString && connectorString.startsWith('nostr+walletconnect://')) {
+            console.log('✅ Found NWC connection from Alby connector string');
+            return connectorString;
+          }
+        } catch (error) {
+          console.log('⚠️ Failed to get Alby connector string:', error);
+        }
+      }
+      
+      // Try to get NWC through the newer Alby API
+      if (typeof alby.createNWCConnection === 'function') {
+        try {
+          const nwcConnection = await (alby.createNWCConnection as () => Promise<string>)();
+          console.log('🔗 Alby NWC connection:', nwcConnection);
+          if (nwcConnection) {
+            console.log('✅ Found NWC connection from Alby createNWCConnection');
+            return nwcConnection;
+          }
+        } catch (error) {
+          console.log('⚠️ Failed to create Alby NWC connection:', error);
+        }
+      }
       
       // Deep inspect Alby object properties
       console.log('🔍 Inspecting Alby object structure...');
@@ -312,34 +374,60 @@ export async function detectWalletNWC(): Promise<string | null> {
         const value = alby[key];
         if (value && typeof value === 'object') {
           console.log(`📦 alby.${key}:`, Object.keys(value));
+          
+          // Type-safe property access
+          const valueObj = value as Record<string, unknown>;
+          
+          // Check for NWC in nested objects
+          if ('nwc' in valueObj || 'connectionString' in valueObj || 'walletConnect' in valueObj) {
+            console.log(`🔗 Found potential NWC in alby.${key}:`, { 
+              nwc: valueObj.nwc, 
+              connectionString: valueObj.connectionString,
+              walletConnect: valueObj.walletConnect
+            });
+            
+            const nwcCandidate = valueObj.nwc || valueObj.connectionString || valueObj.walletConnect;
+            if (typeof nwcCandidate === 'string' && nwcCandidate.startsWith('nostr+walletconnect://')) {
+              console.log(`✅ Found valid NWC connection from alby.${key}`);
+              return nwcCandidate;
+            }
+          }
         } else {
           console.log(`🔧 alby.${key}:`, typeof value);
         }
       }
       
       // Check if webln has any NWC-related properties
-      if (alby.webln) {
+      if ('webln' in alby && alby.webln && typeof alby.webln === 'object') {
         console.log('🔍 Checking Alby WebLN properties:', Object.keys(alby.webln));
         
         // Check for any NWC-related properties in webln
-        const weblnKeys = Object.keys(alby.webln);
+        const weblnObj = alby.webln as Record<string, unknown>;
+        const weblnKeys = Object.keys(weblnObj);
         for (const key of weblnKeys) {
           if (key.toLowerCase().includes('nwc') || key.toLowerCase().includes('connect')) {
-            console.log(`🔗 Found potential NWC property: ${key}`, alby.webln[key]);
+            console.log(`🔗 Found potential NWC property: ${key}`, weblnObj[key]);
+            const candidate = weblnObj[key];
+            if (typeof candidate === 'string' && candidate.startsWith('nostr+walletconnect://')) {
+              console.log(`✅ Found valid NWC connection from alby.webln.${key}`);
+              return candidate;
+            }
           }
         }
       }
       
       // Check if nostr object has NWC capabilities
-      if (alby.nostr) {
+      if ('nostr' in alby && alby.nostr && typeof alby.nostr === 'object') {
         console.log('🔍 Checking Alby Nostr properties:', Object.keys(alby.nostr));
         
+        const nostrObj = alby.nostr as Record<string, unknown>;
+        
         // Some Alby versions might store NWC info in nostr object
-        if (alby.nostr.nwc) {
-          console.log('🔗 Found NWC in nostr object:', alby.nostr.nwc);
-          if (typeof alby.nostr.nwc === 'string' && alby.nostr.nwc.startsWith('nostr+walletconnect://')) {
+        if ('nwc' in nostrObj) {
+          console.log('🔗 Found NWC in nostr object:', nostrObj.nwc);
+          if (typeof nostrObj.nwc === 'string' && nostrObj.nwc.startsWith('nostr+walletconnect://')) {
             console.log('✅ Found NWC connection from Alby nostr object');
-            return alby.nostr.nwc;
+            return nostrObj.nwc;
           }
         }
       }
@@ -347,9 +435,9 @@ export async function detectWalletNWC(): Promise<string | null> {
       // Try standard Alby API methods
       if (typeof alby.getConnectors === 'function') {
         try {
-          const connectors = await alby.getConnectors();
+          const connectors = await (alby.getConnectors as () => Promise<Array<{ type?: string; name?: string; connectionString?: string }>>)();
           console.log('🔗 Alby connectors:', connectors);
-          const nwcConnector = connectors.find((c: any) => c.type === 'nwc');
+          const nwcConnector = connectors.find((c) => c.type === 'nwc' || c.name?.toLowerCase().includes('nwc'));
           if (nwcConnector?.connectionString) {
             console.log('✅ Found NWC connection from Alby connectors');
             return nwcConnector.connectionString;
@@ -362,7 +450,7 @@ export async function detectWalletNWC(): Promise<string | null> {
       // Alternative Alby API check
       if (typeof alby.getWalletConnectInfo === 'function') {
         try {
-          const walletConnectInfo = await alby.getWalletConnectInfo();
+          const walletConnectInfo = await (alby.getWalletConnectInfo as () => Promise<{ connectionString?: string }>)();
           console.log('🔗 Alby WalletConnect info:', walletConnectInfo);
           if (walletConnectInfo?.connectionString) {
             return walletConnectInfo.connectionString;
@@ -375,7 +463,7 @@ export async function detectWalletNWC(): Promise<string | null> {
       // Check for user account information that might contain NWC
       if (typeof alby.getAccount === 'function') {
         try {
-          const account = await alby.getAccount();
+          const account = await (alby.getAccount as () => Promise<{ nwc?: string }>)();
           console.log('👤 Alby account info:', account);
           if (account?.nwc) {
             console.log('✅ Found NWC connection from Alby account');
@@ -385,23 +473,43 @@ export async function detectWalletNWC(): Promise<string | null> {
           console.log('⚠️ Failed to get Alby account:', error);
         }
       }
+    }
+    
+    // Method 2: Check for Bitcoin Connect provider extensions
+    if ('bitcoinConnect' in window) {
+      console.log('₿ Bitcoin Connect detected, checking for wallet extensions...');
+      const bitcoinConnect = (window as { bitcoinConnect: Record<string, unknown> }).bitcoinConnect;
+      console.log('🔧 Bitcoin Connect methods:', Object.keys(bitcoinConnect));
       
-      // Check if webbtc has any NWC info
-      if (alby.webbtc) {
-        console.log('₿ Checking Alby WebBTC properties:', Object.keys(alby.webbtc));
+      if (typeof bitcoinConnect.getProvider === 'function') {
+        try {
+          const provider = await (bitcoinConnect.getProvider as () => Promise<{ getNWC?: () => Promise<string> }>)();
+          console.log('📱 Bitcoin Connect provider:', provider);
+          
+          // Check if the provider has NWC capabilities
+          if (provider && typeof provider.getNWC === 'function') {
+            const nwc = await provider.getNWC();
+            if (nwc && nwc.startsWith('nostr+walletconnect://')) {
+              console.log('✅ Found NWC from Bitcoin Connect provider');
+              return nwc;
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ Failed to get Bitcoin Connect provider:', error);
+        }
       }
     }
     
-    // Method 2: Check for Mutiny wallet
-    if ((window as any).mutiny) {
+    // Method 3: Check for Mutiny wallet
+    if ('mutiny' in window) {
       console.log('⚡ Mutiny wallet detected, checking for NWC...');
-      const mutiny = (window as any).mutiny;
+      const mutiny = (window as { mutiny: Record<string, unknown> }).mutiny;
       console.log('🔧 Mutiny methods:', Object.keys(mutiny));
       
       if (typeof mutiny.getNWCConnection === 'function') {
         try {
-          const nwcConnection = await mutiny.getNWCConnection();
-          if (nwcConnection) {
+          const nwcConnection = await (mutiny.getNWCConnection as () => Promise<string>)();
+          if (nwcConnection && nwcConnection.startsWith('nostr+walletconnect://')) {
             console.log('✅ Found NWC connection from Mutiny wallet');
             return nwcConnection;
           }
@@ -411,28 +519,152 @@ export async function detectWalletNWC(): Promise<string | null> {
       }
     }
     
-    // Method 3: Check for generic NWC in WebLN provider
-    if ((window.webln as any).nwc) {
+    // Method 4: Check for generic NWC in WebLN provider
+    if (window.webln && 'nwc' in window.webln) {
       console.log('🔗 NWC property found on WebLN provider');
-      const nwc = (window.webln as any).nwc;
+      const nwc = (window.webln as { nwc: string }).nwc;
       if (typeof nwc === 'string' && nwc.startsWith('nostr+walletconnect://')) {
         console.log('✅ Found NWC connection from WebLN provider');
         return nwc;
       }
     }
     
-    // Method 4: Check for NWC in browser storage (some wallets store it there)
+    // Method 5: Comprehensive storage inspection for existing NWC connections
+    console.log('🗄️ Checking all browser storage for existing NWC connections...');
+    
     try {
-      const storedNWC = localStorage.getItem('nwc_connection') || localStorage.getItem('walletconnect');
-      if (storedNWC && storedNWC.startsWith('nostr+walletconnect://')) {
-        console.log('✅ Found NWC connection in localStorage');
-        return storedNWC;
+      // Check localStorage extensively
+      console.log('📦 localStorage inspection:');
+      const localStorageKeys = Object.keys(localStorage);
+      console.log('  - All localStorage keys:', localStorageKeys);
+      
+      // Common NWC storage patterns
+      const nwcStorageKeys = [
+        'nwc_connection', 'walletconnect', 'alby_nwc', 'lightning_nwc', 'nostr_wallet_connect',
+        'alby-hub-nwc', 'nwc', 'wallet_connect', 'lightning_wallet', 'alby_connection',
+        'bitcoin_connect_nwc', 'webln_nwc', 'alby-extension-nwc'
+      ];
+      
+      // Check specific known keys
+      for (const key of nwcStorageKeys) {
+        const storedValue = localStorage.getItem(key);
+        if (storedValue) {
+          console.log(`  - Found data in ${key}:`, storedValue.slice(0, 50) + '...');
+          if (storedValue.startsWith('nostr+walletconnect://')) {
+            console.log(`✅ Found valid NWC connection in localStorage key: ${key}`);
+            return storedValue;
+          }
+        }
       }
+      
+      // Check all localStorage keys for anything that looks like NWC
+      for (const key of localStorageKeys) {
+        if (key.toLowerCase().includes('nwc') || 
+            key.toLowerCase().includes('wallet') || 
+            key.toLowerCase().includes('connect') ||
+            key.toLowerCase().includes('nostr') ||
+            key.toLowerCase().includes('alby')) {
+          const value = localStorage.getItem(key);
+          if (value) {
+            console.log(`  - Checking wallet-related key ${key}:`, value.slice(0, 100) + '...');
+            
+            // Try parsing as JSON in case it's wrapped
+            try {
+              const parsed = JSON.parse(value);
+              console.log(`  - Parsed ${key} as JSON:`, parsed);
+              
+              // Check for NWC in parsed object
+              if (typeof parsed === 'object' && parsed !== null) {
+                const searchObject = (obj: Record<string, unknown>, path = ''): string | null => {
+                  for (const [k, v] of Object.entries(obj)) {
+                    const currentPath = path ? `${path}.${k}` : k;
+                    if (typeof v === 'string' && v.startsWith('nostr+walletconnect://')) {
+                      console.log(`✅ Found NWC in ${key} at path ${currentPath}`);
+                      return v;
+                    }
+                    if (typeof v === 'object' && v !== null) {
+                      const result = searchObject(v as Record<string, unknown>, currentPath);
+                      if (result) return result;
+                    }
+                  }
+                  return null;
+                };
+                
+                const foundNWC = searchObject(parsed);
+                if (foundNWC) return foundNWC;
+              }
+            } catch {
+              // Not JSON, check if it's a direct NWC string
+              if (value.startsWith('nostr+walletconnect://')) {
+                console.log(`✅ Found NWC connection in localStorage key: ${key}`);
+                return value;
+              }
+            }
+          }
+        }
+      }
+      
+      // Check sessionStorage too
+      console.log('📦 sessionStorage inspection:');
+      const sessionStorageKeys = Object.keys(sessionStorage);
+      console.log('  - All sessionStorage keys:', sessionStorageKeys);
+      
+      for (const key of sessionStorageKeys) {
+        if (key.toLowerCase().includes('nwc') || 
+            key.toLowerCase().includes('wallet') || 
+            key.toLowerCase().includes('connect')) {
+          const value = sessionStorage.getItem(key);
+          if (value) {
+            console.log(`  - Checking session key ${key}:`, value.slice(0, 100) + '...');
+            if (value.startsWith('nostr+walletconnect://')) {
+              console.log(`✅ Found NWC connection in sessionStorage key: ${key}`);
+              return value;
+            }
+          }
+        }
+      }
+      
     } catch (error) {
-      console.log('⚠️ Could not check localStorage:', error);
+      console.log('⚠️ Could not check browser storage:', error);
+    }
+    
+    // Method 6: Try to prompt user to create NWC connection if Alby is detected
+    if ('alby' in window) {
+      console.log('🐝 Alby detected but no NWC found - checking if we can prompt wallet to create one');
+      const alby = (window as { alby: Record<string, unknown> }).alby;
+      
+      // Try to trigger Alby NWC creation flow if available
+      if (typeof alby.requestNWC === 'function') {
+        try {
+          console.log('🔄 Attempting to request NWC from Alby...');
+          const nwc = await (alby.requestNWC as () => Promise<string>)();
+          if (nwc && nwc.startsWith('nostr+walletconnect://')) {
+            console.log('✅ NWC created via Alby requestNWC');
+            return nwc;
+          }
+        } catch (error) {
+          console.log('⚠️ Alby requestNWC failed:', error);
+        }
+      }
+      
+      // Check if Alby has any wallet connect methods
+      if (typeof alby.requestWalletConnect === 'function') {
+        try {
+          console.log('🔄 Attempting requestWalletConnect from Alby...');
+          const result = await (alby.requestWalletConnect as () => Promise<{ connectionString?: string }>)();
+          if (result?.connectionString?.startsWith('nostr+walletconnect://')) {
+            console.log('✅ NWC created via Alby requestWalletConnect');
+            return result.connectionString;
+          }
+        } catch (error) {
+          console.log('⚠️ Alby requestWalletConnect failed:', error);
+        }
+      }
     }
     
     console.log('❌ No NWC connection found through any detection method');
+    console.log('💡 Suggestion: User should manually create and paste an NWC connection from their wallet settings');
+    console.log('💡 For debugging: Check the console logs above to see what wallet APIs were detected');
     return null;
   } catch (error) {
     console.warn('❌ Failed to detect wallet NWC:', error);

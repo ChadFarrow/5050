@@ -47,7 +47,7 @@ export function AddNWCConnection({ campaign }: AddNWCConnectionProps) {
         toast.success("NWC Detected", "Found NWC connection from your connected wallet!");
       } else {
         // Provide helpful guidance based on detected wallet
-        if ((window as any).alby) {
+        if ('alby' in window) {
           toast.error("Alby NWC Setup Required", "Please create an NWC connection in your Alby wallet: Settings → Developer → Nostr Wallet Connect → Create Connection");
         } else {
           toast.error("NWC Setup Required", "Please create an NWC connection in your wallet that supports Nostr Wallet Connect");
@@ -153,7 +153,7 @@ export function AddNWCConnection({ campaign }: AddNWCConnectionProps) {
               <Plus className="h-4 w-4 mr-2" />
               Add NWC Connection
             </Button>
-            {wallet.isConnected && (window as any).alby && (
+            {wallet.isConnected && 'alby' in window && (
               <div className="text-xs p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
                 <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">💡 Alby Wallet Detected</p>
                 <p className="text-blue-700 dark:text-blue-300">
