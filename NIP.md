@@ -133,13 +133,43 @@ Example:
 }
 ```
 
+## Fundraiser Deletion
+
+Fundraisers can be deleted by their creators **only if no tickets have been sold yet**. This allows creators to fix setup mistakes without impacting participants.
+
+To delete a fundraiser:
+1. Publish a new Kind 31950 event with the same `d` tag
+2. Set empty content (`""`)
+3. Add a `deleted` tag with the deletion timestamp
+
+```json
+{
+  "kind": 31950,
+  "content": "",
+  "tags": [
+    ["d", "weekly-show-2024-01"],
+    ["deleted", "1704067400"]
+  ],
+  "pubkey": "...",
+  "created_at": 1704067400,
+  "id": "...",
+  "sig": "..."
+}
+```
+
+Clients should:
+- Hide deleted fundraisers from listings
+- Prevent deletion if any ticket purchases exist
+- Only allow creators to delete their own fundraisers
+
 ## Implementation Notes
 
 1. **Payment Integration**: Ticket purchases should integrate with NIP-57 Lightning Zaps for payments
 2. **Fairness**: Random number generation for winner selection should be transparent and verifiable
 3. **Validation**: Clients should validate that ticket purchases have corresponding valid lightning payments
-4. **Fundraiser States**: Fundraisers can be in states: active, ended, or cancelled
+4. **Fundraiser States**: Fundraisers can be in states: active, ended, cancelled, or deleted
 5. **Ticket Numbering**: Tickets should be numbered sequentially starting from 1 for each fundraiser
+6. **Deletion Safety**: Only allow deletion of fundraisers with zero ticket sales to protect participants
 
 ## Security Considerations
 

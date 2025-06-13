@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarIcon, ImageIcon, Loader2, Clock, Wallet, Zap } from "lucide-react";
+import { CalendarIcon, ImageIcon, Loader2, Clock, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@/hooks/useWallet';
-import { detectWalletNWC } from '@/lib/nwc';
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -64,11 +63,10 @@ const initialForm: FundraiserForm = {
 export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const wallet = useWallet();
   const [form, setForm] = useState<FundraiserForm>(initialForm);
-  const [isDetectingNWC, setIsDetectingNWC] = useState(false);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
     try {
@@ -77,64 +75,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
     } catch (error) {
       console.error('Error updating form field:', field, error);
       // Don't let form updates crash the app
-    }
-  };
-
-  const handleDetectNWC = async () => {
-    if (!wallet.isConnected) {
-      toast({
-        title: "No Wallet Connected",
-        description: "Please connect your wallet first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsDetectingNWC(true);
-    try {
-      console.log('🔍 Starting NWC detection from CreateCampaignDialog...');
-      console.log('💻 Current browser environment:', {
-        userAgent: navigator.userAgent,
-        webln: !!window.webln,
-        alby: 'alby' in window,
-        walletConnected: wallet.isConnected
-      });
-      
-      const detectedNWC = await detectWalletNWC();
-      if (detectedNWC) {
-        console.log('✅ NWC detected, length:', detectedNWC.length);
-        setForm(prev => ({
-          ...prev,
-          nwcConnection: detectedNWC
-        }));
-        toast({
-          title: "NWC Detected",
-          description: "Found NWC connection from your wallet!",
-        });
-      } else {
-        console.log('❌ No NWC found - showing helpful error');
-        
-        // Show specific instructions based on detected wallet
-        let instructions = "Create an NWC connection in your wallet and paste it above.";
-        if ('alby' in window) {
-          instructions = "In Alby Hub: Settings → Developer → Nostr Wallet Connect → Create Connection → Copy the connection string";
-        }
-        
-        toast({
-          title: "No NWC Found", 
-          description: instructions,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('❌ NWC detection failed:', error);
-      toast({
-        title: "Detection Failed",
-        description: "Could not detect NWC from your wallet. Try creating one manually.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDetectingNWC(false);
     }
   };
 

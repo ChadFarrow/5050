@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Target, Ticket, Trophy, Clock, ExternalLink, Crown } from "lucide-react";
+import { Target, Ticket, Trophy, Clock, ExternalLink, Crown, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useAuthor } from "@/hooks/useAuthor";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
+import { DeleteFundraiserDialog } from "@/components/DeleteFundraiserDialog";
 import { genUserName } from "@/lib/genUserName";
 import { formatSats, formatTimeRemaining } from "@/lib/utils";
 import type { Fundraiser } from "@/hooks/useCampaigns";
@@ -24,6 +25,7 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
   const author = useAuthor(fundraiser.pubkey);
   const { data: stats } = useCampaignStats(fundraiser.pubkey, fundraiser.dTag);
   const [showBuyDialog, setShowBuyDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const metadata = author.data?.metadata;
   const displayName = metadata?.name ?? genUserName(fundraiser.pubkey);
@@ -41,6 +43,11 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
   // Get winner information if fundraiser is complete
   const winner = stats?.result;
   const winnerAuthor = useAuthor(winner?.winnerPubkey || "");
+  
+  // Check if user can delete this fundraiser
+  const isCreator = user?.pubkey === fundraiser.pubkey;
+  const hasTickets = totalTickets > 0;
+  const canDelete = isCreator && !hasTickets && fundraiser.isActive;
 
   return (
     <>
@@ -58,6 +65,17 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  title="Delete fundraiser"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
               {fundraiser.isActive ? (
                 <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                   Active
@@ -232,6 +250,13 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
         campaign={fundraiser}
         open={showBuyDialog}
         onOpenChange={setShowBuyDialog}
+      />
+      
+      <DeleteFundraiserDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        fundraiser={fundraiser}
+        hasTickets={hasTickets}
       />
     </>
   );

@@ -292,7 +292,7 @@ export async function detectWalletNWC(): Promise<string | null> {
     
     console.log('✅ WebLN provider found');
     console.log('🔍 WebLN object keys:', Object.keys(window.webln));
-    console.log('🔍 WebLN object methods:', Object.keys(window.webln).filter(key => typeof (window.webln as any)[key] === 'function'));
+    console.log('🔍 WebLN object methods:', Object.keys(window.webln).filter(key => typeof (window.webln as Record<string, unknown>)[key] === 'function'));
     
     // Get wallet info for debugging
     if (typeof window.webln.getInfo === 'function') {
