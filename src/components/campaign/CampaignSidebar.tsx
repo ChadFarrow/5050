@@ -6,26 +6,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserTickets } from "@/hooks/useCampaignStats";
-import { useNostrPublish } from "@/hooks/useNostrPublish";
+import { useTestNostrPublish } from "@/hooks/useTestNostrPublish";
 import { useAuthorDisplay } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
+import { getTestProfiles } from "@/lib/test-profiles";
 import type { Campaign } from "@/hooks/useCampaigns";
 import type { CampaignStats } from "@/hooks/useCampaignStats";
 
 interface CampaignSidebarProps {
   campaign: Campaign;
   stats?: CampaignStats;
-}
-
-// Generate a random test user pubkey
-function generateTestUserPubkey(): string {
-  const chars = '0123456789abcdef';
-  let result = '';
-  for (let i = 0; i < 64; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
 }
 
 // Generate a fake payment hash
@@ -52,7 +43,7 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
   const [showBuyDialog, setShowBuyDialog] = useState(false);
   const [isGeneratingTestTickets, setIsGeneratingTestTickets] = useState(false);
   const { user } = useCurrentUser();
-  const { mutate: publishEvent } = useNostrPublish();
+  const { mutate: publishTestEvent } = useTestNostrPublish();
   const queryClient = useQueryClient();
   const { displayName: creatorName, profileImage: creatorImage } = useAuthorDisplay(campaign.pubkey);
   
@@ -78,25 +69,28 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
     setIsGeneratingTestTickets(true);
     
     try {
-      // Generate 10 test ticket purchases from random users
+      // Get all test profiles to use for ticket purchases
+      const testProfiles = getTestProfiles(10);
+      
+      // Generate 10 test ticket purchases from different test users
       const testMessages = [
         "Good luck everyone! 🍀",
         "Hope I win! 🤞",
         "Supporting the podcast! 🎧",
         "Let's go! 🚀",
-        "Test purchase for debugging",
-        "Random test ticket",
+        "Love this show!",
+        "Value4value in action!",
         "Supporting the show!",
-        "Hope this helps with testing",
-        "Test user purchase",
-        "Debugging ticket purchase"
+        "Hope this helps the podcast!",
+        "Great episode!",
+        "Keep up the good work!"
       ];
 
       // Create campaign coordinate
       const campaignCoordinate = `31950:${campaign.pubkey}:${campaign.dTag}`;
 
       for (let i = 0; i < 10; i++) {
-        const testUserPubkey = generateTestUserPubkey();
+        const testProfile = testProfiles[i];
         const ticketCount = Math.floor(Math.random() * 3) + 1; // 1-3 tickets
         const totalCost = ticketCount * campaign.ticketPrice;
         const paymentHash = generateFakePaymentHash();
@@ -116,23 +110,20 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
           ["test_ticket", "true"], // Mark as test ticket
         ];
 
-        // Use the test user's pubkey to simulate different users
-        const testEvent = {
+        const eventData = {
           kind: 31951,
           content: testMessages[i],
           tags,
-          pubkey: testUserPubkey,
           created_at: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 3600), // Random time in last hour
         };
 
-        // For test tickets, we'll publish them with our user but include the test pubkey in tags
-        publishEvent({
-          ...testEvent,
-          pubkey: user.pubkey, // Use our pubkey for publishing
-          tags: [...tags, ["test_user", testUserPubkey]], // Add the test user pubkey as a tag
+        // Use the test publish method with the specific test profile
+        publishTestEvent({ 
+          event: eventData, 
+          options: { testProfile } 
         }, {
           onSuccess: (eventId) => {
-            console.log(`Test ticket ${i + 1}/10 published:`, eventId);
+            console.log(`Test ticket ${i + 1}/10 published by ${testProfile.name}:`, eventId);
             
             if (i === 9) { // Last ticket
               // Invalidate queries to refresh the UI
@@ -144,7 +135,7 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
             }
           },
           onError: (error) => {
-            console.error(`Failed to create test ticket ${i + 1}:`, error);
+            console.error(`Failed to create test ticket ${i + 1} for ${testProfile.name}:`, error);
           }
         });
 

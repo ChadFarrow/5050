@@ -10,6 +10,8 @@ import { DrawWinnerCard } from "@/components/campaign/DrawWinnerCard";
 import { ParticipantsList } from "@/components/campaign/ParticipantsList";
 import { CampaignSidebar } from "@/components/campaign/CampaignSidebar";
 import { CampaignSkeleton } from "@/components/campaign/CampaignSkeleton";
+import { TestModeToggle } from "@/components/TestModeToggle";
+import { AddLightningAddress } from "@/components/AddLightningAddress";
 
 export default function Campaign() {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
@@ -77,7 +79,9 @@ export default function Campaign() {
           </div>
 
           {/* Sidebar */}
-          <div>
+          <div className="space-y-6">
+            <TestModeToggle />
+            <AddLightningAddress campaign={campaign} />
             <CampaignSidebar campaign={campaign} stats={stats} />
           </div>
         </div>

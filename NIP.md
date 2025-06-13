@@ -24,6 +24,8 @@ A fundraiser is an addressable event that defines a 50/50 raffle for a podcaster
 - `podcast_url` - podcast website or RSS feed URL
 - `episode` - specific episode this fundraiser is for
 - `duration` - fundraiser duration in seconds (alternative to calculating from creation time and end_date)
+- `lightning_address` - Lightning address for receiving payments (e.g., user@domain.com)
+- `lnurl` - LNURL-pay endpoint for generating invoices
 
 **Content:** Additional fundraiser details in plaintext
 
@@ -41,7 +43,8 @@ Example:
     ["end_date", "1704067200"],
     ["podcast", "The Weekly Show"],
     ["podcast_url", "https://example.com/podcast"],
-    ["image", "https://example.com/campaign-image.jpg"]
+    ["image", "https://example.com/campaign-image.jpg"],
+    ["lightning_address", "podcaster@getalby.com"]
   ],
   "pubkey": "...",
   "created_at": 1703462400,
