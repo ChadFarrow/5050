@@ -21,20 +21,26 @@ The platform now supports **proper fundraising** where payments go directly to t
 
 ### 1. Get an NWC Connection
 Wallets that support Nostr Wallet Connect:
-- **Alby**: Go to Settings → Developer → Nostr Wallet Connect
+- **Alby**: Go to Settings → Developer → Nostr Wallet Connect → Create Connection
 - **Mutiny**: In-app NWC connection generation
 - **Cashu.me**: NWC support for ecash wallets
 - **LNbits**: Built-in NWC extension
 
-### 2. Add to Fundraiser Event
-When creating a fundraiser, include this tag:
-```json
-["nwc", "nostr+walletconnect://relay.example.com?relay=wss://relay.example.com&secret=...&pubkey=..."]
-```
+### 2. Configure During Fundraiser Creation
+**NEW: NWC setup is now part of the Create Fundraiser flow**
+
+1. **Click "Create Fundraiser"** on the main page
+2. **Fill out fundraiser details** (title, description, etc.)
+3. **In the "Payment Setup" section**:
+   - **Manual Entry**: Paste your NWC connection string
+   - **Auto-Detection**: Click "Use Current Wallet" if you have Alby connected
+   - **Helpful Guidance**: Get wallet-specific setup instructions
+
+4. **Complete fundraiser creation** with NWC already configured
 
 ### 3. Test the Setup
-1. Create fundraiser with NWC connection
-2. Buy tickets
+1. Create fundraiser with NWC connection configured
+2. Buy tickets from the fundraiser
 3. Should see green message: "This invoice was created by the fundraiser creator via NWC"
 4. Payment goes to fundraiser creator, not buyer
 
@@ -82,9 +88,17 @@ When creating a fundraiser, include this tag:
 
 ## Next Steps
 
-1. **Test the feature** with an NWC connection
-2. **Update existing fundraisers** to include NWC connections
-3. **Share instructions** with fundraiser creators
+1. **Create fundraisers** with the new streamlined NWC setup
+2. **Test the complete flow** from creation to ticket purchase
+3. **Share the improved workflow** with fundraiser creators
 4. **Monitor usage** and iterate based on feedback
+
+## Benefits of New Flow
+
+- ✅ **Streamlined Setup** - Configure payments during fundraiser creation
+- ✅ **Better UX** - No separate setup step required after creation
+- ✅ **Auto-Detection** - One-click setup for supported wallets like Alby
+- ✅ **Clear Guidance** - Wallet-specific instructions and validation
+- ✅ **Prevents Issues** - Warns users about payment setup before creating fundraiser
 
 This enables proper peer-to-peer fundraising on Nostr with real Lightning payments via NWC!
