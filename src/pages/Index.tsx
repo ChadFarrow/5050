@@ -12,7 +12,6 @@ import { useAutoWinnerSelection } from "@/hooks/useAutoWinnerSelection";
 import { CampaignCard } from "@/components/CampaignCard";
 import { CreateCampaignDialog } from "@/components/CreateCampaignDialog";
 import { DonateToCreatorDialog } from "@/components/DonateToCreatorDialog";
-import { DevTools } from "@/components/DevTools";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
@@ -343,11 +342,6 @@ const Index = () => {
         open={showDonateDialog} 
         onOpenChange={setShowDonateDialog} 
       />
-
-      {/* Development Tools */}
-      <div className="container mx-auto px-4 mb-8">
-        <DevTools />
-      </div>
 
       {/* Footer */}
       <footer className="border-t bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mt-8 sm:mt-16">

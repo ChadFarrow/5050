@@ -54,8 +54,7 @@ export function useAutoWinnerSelection() {
       // Skip fundraisers marked for manual draw
       const expiredUserFundraisers = fundraisers.filter(fundraiser => 
         fundraiser.pubkey === user.pubkey && 
-        fundraiser.endDate <= now && 
-        !fundraiser.isActive &&
+        fundraiser.endDate <= now && // Past end date
         !fundraiser.manualDraw && // Skip manual draw fundraisers
         !processedFundraisers.current.has(fundraiser.id)
       );
@@ -65,6 +64,7 @@ export function useAutoWinnerSelection() {
         totalFundraisers: fundraisers.length,
         userFundraisers: fundraisers.filter(f => f.pubkey === user.pubkey).length,
         userEndedFundraisers: fundraisers.filter(f => f.pubkey === user.pubkey && f.endDate <= now).length,
+        userAutoDrawEndedFundraisers: fundraisers.filter(f => f.pubkey === user.pubkey && f.endDate <= now && !f.manualDraw).length,
         expiredUserFundraisers: expiredUserFundraisers.length,
         processedCount: processedFundraisers.current.size,
         processed: Array.from(processedFundraisers.current),
@@ -79,7 +79,9 @@ export function useAutoWinnerSelection() {
           endDateReadable: new Date(f.endDate * 1000).toLocaleString(),
           isActive: f.isActive,
           isExpired: f.endDate <= now,
+          isManualDraw: f.manualDraw,
           isProcessed: processedFundraisers.current.has(f.id),
+          qualifiesForAutoDraw: f.endDate <= now && !f.manualDraw && !processedFundraisers.current.has(f.id),
         });
       });
 
@@ -236,6 +238,12 @@ export function useAutoWinnerSelection() {
 
     // Run initial check immediately
     console.log('🚀 Starting auto-winner selection system...');
+    console.log('ℹ️ Auto-winner selection will process fundraisers that:');
+    console.log('  ✅ Are created by the current user');
+    console.log('  ✅ Have passed their end date');
+    console.log('  ✅ Are NOT marked for manual draw');
+    console.log('  ✅ Have not been processed yet');
+    console.log('  ⚠️ NOTE: Campaigns may still show "Active" even after end date if they have winners pending payout');
     checkAndDrawWinners();
 
     // Run another check after 5 seconds to catch any that might have been missed
@@ -266,9 +274,12 @@ export function useAutoWinnerSelection() {
         const expiredUserFundraisers = fundraisers.filter(fundraiser => 
           fundraiser.pubkey === user.pubkey && 
           fundraiser.endDate <= now && 
-          !fundraiser.isActive
+          !fundraiser.manualDraw
         );
-        console.log('🔍 Manual check found expired fundraisers:', expiredUserFundraisers.length);
+        console.log('🔍 Manual check found expired auto-draw fundraisers:', expiredUserFundraisers.length);
+        expiredUserFundraisers.forEach(f => {
+          console.log(`- ${f.title}: ended ${new Date(f.endDate * 1000).toLocaleString()}, processed: ${processedFundraisers.current.has(f.id)}`);
+        });
       };
       checkAndDrawWinners();
     }
