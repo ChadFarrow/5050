@@ -107,6 +107,10 @@ A fundraiser result event is published by the fundraiser creator when the fundra
 **Optional tags:**
 - `winner_payment` - lightning payment details for winner payout
 - `random_seed` - seed used for random number generation (for transparency)
+- `payout_confirmed` - unix timestamp when payout was confirmed by creator
+- `payout_note` - optional note about the payout confirmation
+- `manual_completed` - unix timestamp when campaign was manually marked as completed
+- `completion_note` - optional note about the manual completion
 
 **Content:** Message about the fundraiser results
 

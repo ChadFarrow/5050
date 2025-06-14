@@ -15,6 +15,12 @@ export function WinnerDisplay({ result }: WinnerDisplayProps) {
   
   // Check if this was automatically drawn
   const isAutoDrawn = result.event.tags.some(tag => tag[0] === 'auto_drawn' && tag[1] === 'true');
+  
+  // Check if payout has been confirmed
+  const payoutConfirmed = result.event.tags.some(tag => tag[0] === 'payout_confirmed');
+  
+  // Check if manually completed
+  const manuallyCompleted = result.event.tags.some(tag => tag[0] === 'manual_completed');
 
   return (
     <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950 dark:to-orange-950 border-yellow-200 dark:border-yellow-800">
@@ -24,11 +30,23 @@ export function WinnerDisplay({ result }: WinnerDisplayProps) {
             <Trophy className="h-5 w-5 mr-2" />
             Winner Announced!
           </div>
-          {isAutoDrawn && (
-            <div className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
-              Auto-drawn
-            </div>
-          )}
+          <div className="flex gap-2">
+            {isAutoDrawn && (
+              <div className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+                Auto-drawn
+              </div>
+            )}
+            {payoutConfirmed && (
+              <div className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 py-1 rounded">
+                ✅ Paid
+              </div>
+            )}
+            {manuallyCompleted && !payoutConfirmed && (
+              <div className="text-xs bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 px-2 py-1 rounded">
+                ✅ Completed
+              </div>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

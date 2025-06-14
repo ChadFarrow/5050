@@ -85,10 +85,22 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
                   Active
                 </Badge>
               ) : winner ? (
-                <Badge variant="default" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                  <Crown className="h-3 w-3 mr-1" />
-                  Winner Drawn
-                </Badge>
+                <>
+                  <Badge variant="default" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Winner Drawn
+                  </Badge>
+                  {winner.event.tags.some(tag => tag[0] === 'payout_confirmed') && (
+                    <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      ✅ Paid
+                    </Badge>
+                  )}
+                  {winner.event.tags.some(tag => tag[0] === 'manual_completed') && !winner.event.tags.some(tag => tag[0] === 'payout_confirmed') && (
+                    <Badge variant="default" className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                      ✅ Completed
+                    </Badge>
+                  )}
+                </>
               ) : (
                 <Badge variant="secondary">
                   Ended

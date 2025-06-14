@@ -58,25 +58,58 @@ async function eventToFundraiser(event: NostrEvent, nostr: { query: (filters: ob
   const dTag = tags.get('d') || '';
   const isManualDraw = tags.get('manual_draw') === 'true';
 
-  // For manual draws, check if winner has been drawn
+  // Determine if fundraiser should be considered active
   let isActive = endDate > now;
-  if (isManualDraw) {
-    try {
-      // Check if there's a result event for this fundraiser
-      const resultEvents = await nostr.query([{
-        kinds: [31952],
-        authors: [event.pubkey],
-        '#d': [dTag],
-        limit: 1,
+  
+  try {
+    // Check if there's a result event (winner drawn) for this fundraiser
+    const resultEvents = await nostr.query([{
+      kinds: [31952],
+      authors: [event.pubkey],
+      '#d': [dTag],
+      limit: 1,
+    }], { signal: AbortSignal.timeout(2000) });
+    
+    if (resultEvents.length > 0) {
+      // Winner has been drawn, but check if prize has been claimed and paid
+      const campaignCoordinate = `31950:${event.pubkey}:${dTag}`;
+      
+      // Check for prize claims
+      const claimEvents = await nostr.query([{
+        kinds: [31954],
+        '#a': [campaignCoordinate],
+        limit: 50, // Get all claims
       }], { signal: AbortSignal.timeout(2000) });
       
-      // If there's a winner, the fundraiser is no longer active regardless of end date
-      if (resultEvents.length > 0) {
-        isActive = false;
+      // Check for payout confirmation (we'll look for a specific tag or event type)
+      // For now, we'll keep it active if there are claims but no confirmed payout
+      // This encourages creators to process payouts to clear their active tab
+      if (claimEvents.length > 0) {
+        // Prize has been claimed, check if payout is confirmed
+        // We can add a payout confirmation system later
+        // For now, keep active until manually marked as paid
+        const resultEvent = resultEvents[0];
+        const payoutConfirmed = resultEvent.tags.some(tag => tag[0] === 'payout_confirmed');
+        const manuallyCompleted = resultEvent.tags.some(tag => tag[0] === 'manual_completed');
+        
+        isActive = !payoutConfirmed && !manuallyCompleted; // Stay active until payout is confirmed or manually completed
+      } else {
+        // Winner drawn but no claim yet - check if manually completed
+        const resultEvent = resultEvents[0];
+        const manuallyCompleted = resultEvent.tags.some(tag => tag[0] === 'manual_completed');
+        
+        isActive = !manuallyCompleted; // Stay active unless manually completed
       }
-    } catch (error) {
-      console.log('Failed to check for winner in manual draw fundraiser:', error);
-      // Fall back to time-based check
+    }
+  } catch (error) {
+    console.log('Failed to check fundraiser completion status:', error);
+    // Fall back to time-based check for manual draws, or result check for auto draws
+    if (isManualDraw) {
+      // Keep active until manually resolved
+      isActive = true;
+    } else {
+      // For auto draws, check if past end date
+      isActive = endDate > now;
     }
   }
 

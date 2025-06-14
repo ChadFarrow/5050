@@ -8,6 +8,8 @@ import { CampaignHeader } from "@/components/campaign/CampaignHeader";
 import { WinnerDisplay } from "@/components/campaign/WinnerDisplay";
 import { ClaimPrizeCard } from "@/components/campaign/ClaimPrizeCard";
 import { PrizeClaimsCard } from "@/components/campaign/PrizeClaimsCard";
+import { MarkCompletedCard } from "@/components/campaign/MarkCompletedCard";
+import { CampaignDebugInfo } from "@/components/campaign/CampaignDebugInfo";
 import { DrawWinnerCard } from "@/components/campaign/DrawWinnerCard";
 import { ParticipantsList } from "@/components/campaign/ParticipantsList";
 import { CampaignSidebar } from "@/components/campaign/CampaignSidebar";
@@ -82,6 +84,14 @@ export default function Campaign() {
             {stats && (
               <DrawWinnerCard campaign={campaign} stats={stats} />
             )}
+            
+            <MarkCompletedCard 
+              campaign={campaign} 
+              result={stats?.result} 
+              hasTicketSales={stats ? stats.totalTickets > 0 : false}
+            />
+            
+            <CampaignDebugInfo campaign={campaign} stats={stats} />
             
             <ParticipantsList 
               purchases={stats?.purchases || []} 

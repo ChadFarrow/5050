@@ -11,6 +11,7 @@ import { usePrizeClaims } from "@/hooks/usePrizeClaims";
 import { useToastUtils } from "@/lib/shared-utils";
 import { useAuthorDisplay } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
+import { ConfirmPayoutButton } from "./ConfirmPayoutButton";
 import type { Campaign } from "@/hooks/useCampaigns";
 import type { CampaignResult } from "@/hooks/useCampaignStats";
 
@@ -91,6 +92,12 @@ export function PrizeClaimsCard({ campaign, result }: PrizeClaimsCardProps) {
             isCopied={copiedPayment === claim.id}
           />
         ))}
+        
+        <ConfirmPayoutButton 
+          campaign={campaign} 
+          result={result} 
+          hasValidClaims={claims.length > 0} 
+        />
       </CardContent>
     </Card>
   );

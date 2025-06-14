@@ -9,8 +9,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
+import { useWinnerNotification } from "@/hooks/useWinnerNotification";
 import { useToastUtils } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
+import { createCampaignUrl } from "@/lib/campaign-utils";
 import type { Campaign } from "@/hooks/useCampaigns";
 import type { CampaignResult } from "@/hooks/useCampaignStats";
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,6 +25,7 @@ interface ClaimPrizeCardProps {
 export function ClaimPrizeCard({ campaign, result }: ClaimPrizeCardProps) {
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
+  const { sendClaimNotification } = useWinnerNotification();
   const toast = useToastUtils();
   const queryClient = useQueryClient();
   
@@ -73,13 +76,28 @@ export function ClaimPrizeCard({ campaign, result }: ClaimPrizeCardProps) {
       content: message.trim() || `Claiming my prize of ${formatSats(result.winnerAmount)} from the ${campaign.title} raffle!`,
       tags: claimTags,
     }, {
-      onSuccess: (event) => {
+      onSuccess: async (event) => {
         console.log('Prize claim submitted successfully:', event.id);
         setHasClaimed(true);
         
+        // Send notification to campaign creator
+        try {
+          await sendClaimNotification(
+            campaign, 
+            result, 
+            paymentMethod, 
+            paymentInfo.trim(),
+            message.trim() || undefined
+          );
+          console.log('Creator notification sent successfully');
+        } catch (notificationError) {
+          console.error('Failed to send creator notification:', notificationError);
+          // Don't fail the whole process if notification fails
+        }
+        
         toast.success(
           "Prize Claim Submitted!",
-          "The campaign creator has been notified and will send your winnings soon."
+          "The campaign creator has been notified via Nostr DM and will send your winnings soon."
         );
         
         // Invalidate queries to refresh any claim-related data
@@ -97,7 +115,7 @@ export function ClaimPrizeCard({ campaign, result }: ClaimPrizeCardProps) {
     toast.success("Copied!", "Campaign link copied to clipboard");
   };
 
-  const campaignUrl = `${window.location.origin}/campaign/${campaign.pubkey}/${campaign.dTag}`;
+  const campaignUrl = createCampaignUrl(campaign);
 
   return (
     <Card className="border-green-200 bg-gradient-to-r from-green-50 to-yellow-50 dark:from-green-950 dark:to-yellow-950">
@@ -108,7 +126,7 @@ export function ClaimPrizeCard({ campaign, result }: ClaimPrizeCardProps) {
         </CardTitle>
         <CardDescription>
           You won {formatSats(result.winnerAmount)} in the "{campaign.title}" raffle! 
-          Submit your payment information below to claim your prize.
+          Submit your payment information below and the creator will be automatically notified to send your prize.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
