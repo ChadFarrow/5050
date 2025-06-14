@@ -1,7 +1,7 @@
 // NOTE: This file is stable and usually should not be modified.
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
-import { ChevronDown, LogOut, UserIcon, UserPlus, Zap } from 'lucide-react';
+import { ChevronDown, LogOut, UserIcon, Zap } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,12 +18,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { LightningConfig } from '@/components/LightningConfig';
 import { useWallet } from '@/hooks/useWallet';
 
-interface AccountSwitcherProps {
-  onAddAccountClick: () => void;
-}
-
-export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
-  const { currentUser, otherUsers, setLogin, removeLogin } = useLoggedInAccounts();
+export function AccountSwitcher() {
+  const { currentUser, removeLogin } = useLoggedInAccounts();
   const { isConnected } = useWallet();
   const [lightningDialogOpen, setLightningDialogOpen] = useState(false);
 
@@ -52,24 +48,6 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         <div className='font-medium text-sm px-2 py-1.5'>Switch Relay</div>
         <RelaySelector className="w-full" />
         <DropdownMenuSeparator />
-        <div className='font-medium text-sm px-2 py-1.5'>Switch Account</div>
-        {otherUsers.map((user) => (
-          <DropdownMenuItem
-            key={user.id}
-            onClick={() => setLogin(user.id)}
-            className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
-          >
-            <Avatar className='w-8 h-8'>
-              <AvatarImage src={user.metadata.picture} alt={getDisplayName(user)} />
-              <AvatarFallback>{getDisplayName(user)?.charAt(0) || <UserIcon />}</AvatarFallback>
-            </Avatar>
-            <div className='flex-1 truncate'>
-              <p className='text-sm font-medium'>{getDisplayName(user)}</p>
-            </div>
-            {user.id === currentUser.id && <div className='w-2 h-2 rounded-full bg-primary'></div>}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => setLightningDialogOpen(true)}
           className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
@@ -77,13 +55,6 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
           <Zap className='w-4 h-4' />
           <span>Lightning Wallet</span>
           {isConnected && <div className='w-2 h-2 rounded-full bg-green-500 ml-auto'></div>}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={onAddAccountClick}
-          className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
-        >
-          <UserPlus className='w-4 h-4' />
-          <span>Add another account</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => removeLogin(currentUser.id)}
