@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
+import { useWinnerNotification } from "@/hooks/useWinnerNotification";
 import { useToastUtils } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
 import type { Campaign } from "@/hooks/useCampaigns";
@@ -47,6 +48,7 @@ function seededRandom(seed: string, min: number, max: number): number {
 export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
+  const { sendWinnerNotification } = useWinnerNotification();
   const toast = useToastUtils();
   const queryClient = useQueryClient();
   const [isDrawing, setIsDrawing] = useState(false);
@@ -135,8 +137,32 @@ export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
         content,
         tags,
       }, {
-        onSuccess: (eventId) => {
-          console.log('Winner selection event published successfully:', eventId);
+        onSuccess: async (event) => {
+          console.log('Winner selection event published successfully:', event.id);
+          
+          // Send notification to winner
+          try {
+            const result = {
+              id: event.id,
+              pubkey: event.pubkey,
+              dTag: campaign.dTag,
+              winnerPubkey: winnerAssignment.purchase.pubkey,
+              winningTicket: winningTicketNumber,
+              winnerAmount,
+              totalTickets: stats.totalTickets,
+              totalRaised,
+              creatorAmount,
+              event,
+              createdAt: event.created_at,
+              message: content
+            };
+            
+            await sendWinnerNotification(campaign, result, winnerAssignment.purchase.pubkey);
+            console.log('Winner notification sent successfully');
+          } catch (notificationError) {
+            console.error('Failed to send winner notification:', notificationError);
+            // Don't show error to user as the main action (drawing winner) succeeded
+          }
           
           // Invalidate queries to refresh the UI
           queryClient.invalidateQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });

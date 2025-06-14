@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useFundraisers } from '@/hooks/useCampaigns';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useWinnerNotification } from '@/hooks/useWinnerNotification';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatSats } from '@/lib/utils';
 import type { Fundraiser } from '@/hooks/useCampaigns';
@@ -39,6 +40,7 @@ export function useAutoWinnerSelection() {
   const { user } = useCurrentUser();
   const { data: fundraisers } = useFundraisers();
   const { mutate: publishEvent } = useNostrPublish();
+  const { sendWinnerNotification } = useWinnerNotification();
   const queryClient = useQueryClient();
   const processedFundraisers = useRef<Set<string>>(new Set());
 
@@ -191,8 +193,32 @@ export function useAutoWinnerSelection() {
           content,
           tags,
         }, {
-          onSuccess: (eventId) => {
-            console.log(`Auto-winner selection published for fundraiser ${fundraiser.id}:`, eventId);
+          onSuccess: async (event) => {
+            console.log(`Auto-winner selection published for fundraiser ${fundraiser.id}:`, event.id);
+            
+            // Send notification to winner
+            try {
+              const result = {
+                id: event.id,
+                pubkey: event.pubkey,
+                dTag: fundraiser.dTag,
+                winnerPubkey: winnerAssignment.purchase.pubkey,
+                winningTicket: winningTicketNumber,
+                winnerAmount,
+                totalTickets: stats.totalTickets,
+                totalRaised,
+                creatorAmount,
+                event,
+                createdAt: event.created_at,
+                message: content
+              };
+              
+              await sendWinnerNotification(fundraiser, result, winnerAssignment.purchase.pubkey);
+              console.log(`Winner notification sent for fundraiser ${fundraiser.id}`);
+            } catch (notificationError) {
+              console.error(`Failed to send winner notification for fundraiser ${fundraiser.id}:`, notificationError);
+              // Don't fail the whole process if notification fails
+            }
             
             // Invalidate queries to refresh the UI
             queryClient.invalidateQueries({ queryKey: ['fundraiser-stats', fundraiser.pubkey, fundraiser.dTag] });
@@ -222,7 +248,7 @@ export function useAutoWinnerSelection() {
       clearInterval(interval);
       clearTimeout(quickRecheck);
     };
-  }, [user, fundraisers, publishEvent, queryClient]);
+  }, [user, fundraisers, publishEvent, sendWinnerNotification, queryClient]);
 
   // Function to manually reset processed fundraisers (for testing)
   const resetProcessedFundraisers = () => {

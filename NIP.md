@@ -208,9 +208,65 @@ Example:
 6. **Ticket Numbering**: Tickets should be numbered sequentially starting from 1 for each fundraiser
 7. **Deletion Safety**: Only allow deletion of fundraisers with zero ticket sales to protect participants
 
+### Kind 31954: Prize Claim
+
+A prize claim event allows winners to claim their prize by providing payment information.
+
+**Required tags:**
+- `d` - unique identifier for this claim (typically the fundraiser d-tag + "-claim")
+- `a` - fundraiser coordinate (kind:pubkey:d-tag)
+- `result_event` - event ID of the Kind 31952 result event
+- `payment_method` - either "lnaddress" or "invoice"
+- `payment_info` - Lightning address (user@domain.com) or Lightning invoice (lnbc...)
+
+**Optional tags:**
+- `message` - optional message from the winner
+
+**Content:** Optional message from the winner about claiming their prize
+
+Example (Lightning Address):
+```json
+{
+  "kind": 31954,
+  "content": "Thanks for the amazing raffle! Excited to claim my prize.",
+  "tags": [
+    ["d", "weekly-show-2024-01-claim"],
+    ["a", "31950:npub1234:weekly-show-2024-01"],
+    ["result_event", "abc123..."],
+    ["payment_method", "lnaddress"],
+    ["payment_info", "winner@getalby.com"]
+  ],
+  "pubkey": "npub5678...",
+  "created_at": 1704067500,
+  "id": "...",
+  "sig": "..."
+}
+```
+
+Example (Lightning Invoice):
+```json
+{
+  "kind": 31954,
+  "content": "Ready to receive my winnings!",
+  "tags": [
+    ["d", "weekly-show-2024-01-claim"],
+    ["a", "31950:npub1234:weekly-show-2024-01"],
+    ["result_event", "abc123..."],
+    ["payment_method", "invoice"],
+    ["payment_info", "lnbc250u1p..."]
+  ],
+  "pubkey": "npub5678...",
+  "created_at": 1704067500,
+  "id": "...",
+  "sig": "..."
+}
+```
+
 ## Security Considerations
 
 - Verify lightning payments before counting ticket purchases and donations
 - Use cryptographically secure random number generation for winner selection
 - Consider implementing dispute resolution mechanisms
 - Validate fundraiser end dates and prevent manipulation
+- Only allow the actual winner (verified by pubkey) to submit prize claims
+- Validate Lightning addresses and invoices before processing payments
