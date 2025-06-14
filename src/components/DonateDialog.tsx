@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Ticket, Loader2, Trophy, Calculator, Settings } from "lucide-react";
+import { Heart, Loader2, Calculator, Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -57,13 +57,13 @@ function generateDeterministicHash(input: string): string {
   return hashHex.padStart(64, '0').substring(0, 64);
 }
 
-interface BuyTicketsDialogProps {
+interface DonateDialogProps {
   campaign: Campaign;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDialogProps) {
+export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps) {
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const { data: stats } = useCampaignStats(campaign.pubkey, campaign.dTag);
@@ -72,35 +72,28 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   const toast = useToastUtils();
   const queryClient = useQueryClient();
   
-  const [ticketCount, setTicketCount] = useState("1");
+  const [donationAmount, setDonationAmount] = useState("");
   const [message, setMessage] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState<LightningInvoiceType | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const tickets = parseInt(ticketCount) || 0;
-  const totalCost = tickets * campaign.ticketPrice;
-  const _totalCostSats = Math.floor(totalCost / 1000);
+  const donationSats = parseInt(donationAmount) || 0;
+  const donationMsats = donationSats * 1000;
 
   const currentPot = (stats?.totalRaised || 0) + (stats?.totalDonations || 0);
-  const projectedPot = currentPot + totalCost;
+  const projectedPot = currentPot + donationMsats;
   const projectedWinnings = Math.floor(projectedPot / 2);
-  const _projectedWinningSats = Math.floor(projectedWinnings / 1000);
 
-  const currentTickets = stats?.totalTickets || 0;
-  const projectedTotalTickets = currentTickets + tickets;
-  const winChance = projectedTotalTickets > 0 ? (tickets / projectedTotalTickets) * 100 : 0;
-
-  const handleBuyTickets = async () => {
+  const handleDonate = async () => {
     if (!user) {
-      toast.error("Error", "You must be logged in to buy tickets");
+      toast.error("Error", "You must be logged in to make a donation");
       return;
     }
 
-    // Don't generate test user here - do it right before publishing event
-
-    if (tickets <= 0) {
-      toast.error("Invalid Amount", "Please enter a valid number of tickets");
+    if (donationSats <= 0) {
+      toast.error("Invalid Amount", "Please enter a valid donation amount");
       return;
     }
 
@@ -120,10 +113,8 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
     try {
       setIsCreatingInvoice(true);
-      // Create Lightning invoice
-      // Convert from millisats to sats for WebLN
-      const totalCostSats = Math.floor(totalCost / 1000);
-      console.log(`Creating invoice: ${totalCostSats} sats (${totalCost} msats) for ${tickets} tickets`);
+      
+      console.log(`Creating donation invoice: ${donationSats} sats (${donationMsats} msats)`);
       console.log('Campaign payment info:', { 
         nwc: campaign.nwc ? 'configured' : 'not configured',
         hasNWC: !!campaign.nwc
@@ -133,51 +124,52 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       
       if (campaign.nwc) {
         // PROPER FUNDRAISING: Use fundraiser creator's NWC connection to generate invoice
-        console.log('✅ Creating invoice from fundraiser NWC connection');
-        console.log('✅ Payment will go to fundraiser creator, not buyer');
+        console.log('✅ Creating donation invoice from fundraiser NWC connection');
+        console.log('✅ Payment will go to fundraiser creator, not donor');
         
         try {
+          // Create a donation-specific invoice using the same NWC function
           invoiceBolt11 = await generateFundraiserInvoiceNWC(
             campaign,
-            totalCost, // amount in millisats
-            tickets
+            donationMsats, // amount in millisats
+            0, // 0 tickets for donations
+            `Donation to ${campaign.title}`
           );
-          console.log('✅ Successfully created NWC invoice');
+          console.log('✅ Successfully created NWC donation invoice');
         } catch (error) {
-          console.error('❌ Failed to create NWC invoice:', error);
+          console.error('❌ Failed to create NWC donation invoice:', error);
           toast.error("Invoice Creation Failed", `Could not create invoice from fundraiser's NWC connection: ${error.message}`);
           return;
         }
       } else {
-        // FALLBACK: Use buyer's wallet (self-payment issue)
+        // FALLBACK: Use donor's wallet (self-payment issue)
         console.warn('⚠️  NO NWC CONNECTION: Fundraiser has no NWC connection configured');
-        console.warn('⚠️  Falling back to buyer wallet (self-payment issue)');
+        console.warn('⚠️  Falling back to donor wallet (self-payment issue)');
         console.warn('⚠️  Fundraiser creator pubkey:', campaign.pubkey);
         console.warn('⚠️  This means payments go to YOU, not the fundraiser creator');
         
         invoiceBolt11 = await wallet.createInvoice(
-          totalCostSats, // amount in sats
-          `${tickets} ticket${tickets > 1 ? 's' : ''} for ${campaign.title}`
+          donationSats, // amount in sats
+          `Donation to ${campaign.title}`
         );
       }
       
-      console.log('Invoice created successfully:', invoiceBolt11.substring(0, 50) + '...');
+      console.log('Donation invoice created successfully:', invoiceBolt11.substring(0, 50) + '...');
 
       // For unified interface, we need to construct the invoice object
-      // This assumes the bolt11 contains all necessary info
       const invoice: LightningInvoiceType = {
         bolt11: invoiceBolt11,
         payment_request: invoiceBolt11,
-        amount_msat: totalCost,
-        description: `${tickets} ticket${tickets > 1 ? 's' : ''} for ${campaign.title}`,
+        amount_msat: donationMsats,
+        description: `Donation to ${campaign.title}`,
         payment_hash: extractPaymentHashFromBolt11(invoiceBolt11) || `derived-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, 
         expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-        checking_id: `invoice-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        checking_id: `donation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       };
 
       setCurrentInvoice(invoice);
     } catch (error) {
-      console.error("Error creating invoice:", error);
+      console.error("Error creating donation invoice:", error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create Lightning invoice';
       console.error("Full error details:", { error, message: errorMessage, wallet: wallet.isConnected });
       toast.error("Invoice Creation Failed", errorMessage);
@@ -187,37 +179,78 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   };
 
   const handlePaymentComplete = async () => {
-    if (!currentInvoice) return;
+    console.log('🔘 handlePaymentComplete called');
+    
+    // Validation checks
+    if (!user) {
+      console.log('❌ User not logged in');
+      toast.error("Authentication Required", "Please log in to complete the donation");
+      return;
+    }
+    
+    if (!currentInvoice) {
+      console.log('❌ No current invoice found');
+      toast.error("Invoice Error", "No invoice found to process");
+      return;
+    }
+    
+    console.log('✅ Current invoice exists, proceeding with payment completion');
 
     try {
       setIsProcessingPayment(true);
+      console.log('⏳ Processing payment started');
 
-      // Generate unique purchase ID
-      const purchaseId = `purchase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Generate unique donation ID
+      const donationId = `donation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Create campaign coordinate
       const campaignCoordinate = `31950:${campaign.pubkey}:${campaign.dTag}`;
+      console.log(`📝 Creating donation with campaign coordinate: ${campaignCoordinate}`);
 
-      // Build tags for ticket purchase event
+      // Build tags for donation event (Kind 31953)
       const tags: string[][] = [
-        ["d", purchaseId],
+        ["d", donationId],
         ["a", campaignCoordinate],
-        ["amount", totalCost.toString()],
-        ["tickets", tickets.toString()],
+        ["amount", donationMsats.toString()],
         ["bolt11", currentInvoice.bolt11],
         ["payment_hash", currentInvoice.payment_hash],
       ];
 
+      // Add anonymous tag if the donation is anonymous
+      if (isAnonymous) {
+        tags.push(["anonymous", "true"]);
+      }
+
       const eventData = {
-        kind: 31951,
+        kind: 31953, // New event kind for donations
         content: message.trim(),
         tags,
         created_at: Math.floor(Date.now() / 1000),
       };
 
       const onSuccess = (eventId: unknown) => {
-        console.log('Ticket purchase event published successfully:', eventId);
-        console.log('Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
+        console.log('✅ Donation event published successfully:', eventId);
+        console.log('🔄 Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
+        
+        // Store donation in local storage as fallback until it appears in relays
+        const pendingDonation = {
+          id: donationId,
+          pubkey: user.pubkey,
+          amount: donationMsats,
+          createdAt: Math.floor(Date.now() / 1000),
+          paymentHash: currentInvoice.payment_hash,
+          bolt11: currentInvoice.bolt11,
+          message: message.trim() || undefined,
+          isAnonymous: isAnonymous,
+          event: eventId as any, // Placeholder for event
+        };
+        
+        const pendingDonationsKey = `pending-donations-${campaignCoordinate}`;
+        const existingJson = localStorage.getItem(pendingDonationsKey) || '[]';
+        const existingDonations = JSON.parse(existingJson);
+        existingDonations.push(pendingDonation);
+        localStorage.setItem(pendingDonationsKey, JSON.stringify(existingDonations));
+        console.log('💾 Stored donation in local storage as fallback');
         
         // Invalidate fundraisers query so the list updates immediately
         queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
@@ -226,42 +259,43 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         
         console.log('Queries invalidated successfully');
         
-        // Also force multiple refreshes with increasing delays to ensure the event has propagated
+        // Force a refresh to show the pending donation immediately
         setTimeout(() => {
-          console.log('Forcing query refresh after 2s delay...');
+          console.log('Refreshing to show pending donation...');
           queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 2000);
-        
-        setTimeout(() => {
-          console.log('Forcing query refresh after 5s delay...');
-          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 5000);
-        
-        setTimeout(() => {
-          console.log('Forcing query refresh after 10s delay...');
-          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 10000);
+        }, 500);
 
         // Show success toast
-        toast.success("Tickets Purchased", `You purchased ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`);
+        toast.success("Donation Complete", `You donated ${formatSats(donationMsats)} to ${campaign.title}`);
 
         // Reset form and close dialog only after successful event publishing
-        setTicketCount("1");
+        setDonationAmount("");
         setMessage("");
+        setIsAnonymous(false);
         setCurrentInvoice(null);
         onOpenChange(false);
       };
 
       const onError = (error: unknown) => {
-        console.error('Failed to publish ticket purchase event:', error);
-        toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
+        console.error('❌ Failed to publish donation event:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error("Donation Recording Failed", `Error: ${errorMsg}. Payment may have succeeded but failed to record.`);
+        setIsProcessingPayment(false); // Reset state on error
       };
 
+      console.log('📤 Publishing donation event:', eventData);
+      console.log('📤 Donation event tags breakdown:', {
+        d: eventData.tags.find(t => t[0] === 'd')?.[1],
+        a: eventData.tags.find(t => t[0] === 'a')?.[1],
+        amount: eventData.tags.find(t => t[0] === 'amount')?.[1],
+        anonymous: eventData.tags.find(t => t[0] === 'anonymous')?.[1]
+      });
+      
       // Publish event with normal method
       publishEvent(eventData, { onSuccess, onError });
     } catch (error) {
-      console.error("Error recording purchase:", error);
-      toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
+      console.error("Error recording donation:", error);
+      toast.error("Donation Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
     } finally {
       setIsProcessingPayment(false);
     }
@@ -269,8 +303,9 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
   const handleClose = () => {
     if (!isPending && !isProcessingPayment && !isCreatingInvoice) {
-      setTicketCount("1");
+      setDonationAmount("");
       setMessage("");
+      setIsAnonymous(false);
       setCurrentInvoice(null);
       setShowConfig(false);
       onOpenChange(false);
@@ -283,8 +318,8 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center">
-              <Ticket className="h-5 w-5 mr-2" />
-              Buy Tickets
+              <Heart className="h-5 w-5 mr-2" />
+              Donate to Prize Pool
             </div>
             {!showConfig && !currentInvoice && (
               <Button
@@ -299,7 +334,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
           <DialogDescription>
             {showConfig ? "Configure your Lightning wallet" : 
              currentInvoice ? "Pay the Lightning invoice below" :
-             `Purchase raffle tickets for ${campaign.title}`}
+             `Increase the prize pool for ${campaign.title}`}
           </DialogDescription>
         </DialogHeader>
 
@@ -317,7 +352,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
                 onClick={() => setCurrentInvoice(null)}
                 className="w-full"
               >
-                Back to Purchase Form
+                Back to Donation Form
               </Button>
             </div>
           ) : (
@@ -330,31 +365,23 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Current Pot:</span>
+                <span>Current Prize Pool:</span>
                 <span className="font-medium">{formatSats(currentPot)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Tickets Sold:</span>
-                <span className="font-medium">{currentTickets}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Ticket Price:</span>
-                <span className="font-medium">{formatSats(campaign.ticketPrice)}</span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Ticket Selection */}
+          {/* Donation Amount */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="tickets">Number of Tickets</Label>
+              <Label htmlFor="amount">Donation Amount (sats)</Label>
               <Input
-                id="tickets"
+                id="amount"
                 type="number"
                 min="1"
-                max="100"
-                value={ticketCount}
-                onChange={(e) => setTicketCount(e.target.value)}
+                placeholder="1000"
+                value={donationAmount}
+                onChange={(e) => setDonationAmount(e.target.value)}
                 disabled={isPending || isProcessingPayment}
               />
             </div>
@@ -363,44 +390,53 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
               <Label htmlFor="message">Message (optional)</Label>
               <Textarea
                 id="message"
-                placeholder="Good luck everyone!"
+                placeholder="Keep up the great work!"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 disabled={isPending || isProcessingPayment}
                 rows={2}
               />
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="anonymous"
+                checked={isAnonymous}
+                onCheckedChange={(checked) => setIsAnonymous(checked as boolean)}
+                disabled={isPending || isProcessingPayment}
+              />
+              <Label htmlFor="anonymous" className="text-sm font-normal">
+                Donate anonymously
+              </Label>
+            </div>
           </div>
 
-          {/* Purchase Summary */}
-          {tickets > 0 && (
-            <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950">
+          {/* Donation Summary */}
+          {donationSats > 0 && (
+            <Card className="bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-950 dark:to-rose-950">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center">
                   <Calculator className="h-4 w-4 mr-2" />
-                  Purchase Summary
+                  Donation Summary
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span>Tickets:</span>
-                  <span className="font-medium">{tickets}</span>
+                  <span>Donation Amount:</span>
+                  <span className="font-medium">{formatSats(donationMsats)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Total Cost:</span>
-                  <span className="font-medium">{formatSats(totalCost)}</span>
+                  <span>New Prize Pool:</span>
+                  <span className="font-medium text-green-600">{formatSats(projectedPot)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Potential Winner Prize:</span>
+                  <span className="font-medium text-green-600">{formatSats(projectedWinnings)}</span>
                 </div>
                 <Separator />
-                <div className="flex justify-between text-sm">
-                  <span>Win Chance:</span>
-                  <Badge variant="secondary">{winChance.toFixed(1)}%</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Potential Prize:</span>
-                  <span className="font-medium text-green-600 flex items-center">
-                    <Trophy className="h-3 w-3 mr-1" />
-                    {formatSats(projectedWinnings)}
-                  </span>
+                <div className="text-xs text-muted-foreground">
+                  <p>🏆 Your donation increases the prize pool for all participants!</p>
+                  <p>🎟️ Donations don't include raffle tickets - buy tickets to be eligible to win.</p>
                 </div>
               </CardContent>
             </Card>
@@ -432,14 +468,14 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
               Cancel
             </Button>
             <Button 
-              onClick={handleBuyTickets} 
-              disabled={isPending || isProcessingPayment || isCreatingInvoice || tickets <= 0}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              onClick={handleDonate} 
+              disabled={isPending || isProcessingPayment || isCreatingInvoice || donationSats <= 0}
+              className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700"
             >
               {(isPending || isProcessingPayment || isCreatingInvoice) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isCreatingInvoice ? "Creating Invoice..." : 
-               isProcessingPayment ? "Recording Purchase..." : 
-               `Buy ${tickets} Ticket${tickets > 1 ? 's' : ''}`}
+               isProcessingPayment ? "Recording Donation..." : 
+               `Add ${donationSats > 0 ? formatSats(donationMsats) : ''} to Prize Pool`}
             </Button>
           </div>
         )}
@@ -447,7 +483,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         {showConfig && (
           <div className="flex justify-end space-x-2 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowConfig(false)}>
-              Back to Purchase
+              Back to Donation
             </Button>
           </div>
         )}

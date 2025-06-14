@@ -294,13 +294,27 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
   }, []);
 
   const payInvoice = useCallback(async (invoice: string): Promise<void> => {
-    if (typeof window.webln?.makeInvoice !== 'function') {
-      throw new Error('WebLN wallet not connected');
+    if (!window.webln) {
+      throw new Error('WebLN wallet not available');
     }
 
     try {
+      // Ensure WebLN provider is enabled before attempting payment
+      if (typeof window.webln.enable === 'function') {
+        console.log('Enabling WebLN provider before payment...');
+        await window.webln.enable();
+        console.log('WebLN provider enabled successfully');
+      }
+
+      if (typeof window.webln.sendPayment !== 'function') {
+        throw new Error('Wallet does not support payments');
+      }
+
+      console.log('Sending payment via WebLN...');
       await window.webln.sendPayment(invoice);
+      console.log('Payment sent successfully');
     } catch (error) {
+      console.error('Payment failed:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to pay invoice');
     }
   }, []);

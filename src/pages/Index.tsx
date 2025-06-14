@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Trophy, Zap, Users, DollarSign, Trash2 } from "lucide-react";
+import { Plus, Trophy, Zap, Users, DollarSign, Trash2, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,12 +11,13 @@ import { useFundraisers } from "@/hooks/useCampaigns";
 import { useAutoWinnerSelection } from "@/hooks/useAutoWinnerSelection";
 import { CampaignCard } from "@/components/CampaignCard";
 import { CreateCampaignDialog } from "@/components/CreateCampaignDialog";
+import { DonateToCreatorDialog } from "@/components/DonateToCreatorDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RelaySelector } from "@/components/RelaySelector";
 
 const Index = () => {
   const { user } = useCurrentUser();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showDonateDialog, setShowDonateDialog] = useState(false);
   const [hiddenFundraisers, setHiddenFundraisers] = useState<Set<string>>(new Set());
   const { data: fundraisers, isLoading } = useFundraisers();
   
@@ -98,17 +99,27 @@ const Index = () => {
               <Button variant="outline" size="sm" className="sm:hidden" asChild>
                 <Link to="/demo">Demo</Link>
               </Button>
-              <div className="hidden sm:block">
-                <RelaySelector />
-              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="hidden lg:inline-flex text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                onClick={() => setShowDonateDialog(true)}
+              >
+                <Heart className="h-4 w-4 mr-1" />
+                Donate to Creator
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="lg:hidden text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                onClick={() => setShowDonateDialog(true)}
+              >
+                <Heart className="h-4 w-4" />
+              </Button>
               <LoginArea className="max-w-32 sm:max-w-60" />
             </div>
           </div>
           
-          {/* Mobile relay selector */}
-          <div className="sm:hidden mt-3 pt-3 border-t">
-            <RelaySelector className="w-full" />
-          </div>
         </div>
       </header>
 
@@ -236,10 +247,9 @@ const Index = () => {
                         <div>
                           <h3 className="text-lg font-semibold mb-2">No Active Fundraisers</h3>
                           <p className="text-muted-foreground">
-                            No fundraisers are currently running. Try switching relays to discover more fundraisers.
+                            No fundraisers are currently running. Create the first one or try switching relays in your account menu.
                           </p>
                         </div>
-                        <RelaySelector className="w-full" />
                       </div>
                     </CardContent>
                   </Card>
@@ -308,10 +318,9 @@ const Index = () => {
                         <div>
                           <h3 className="text-lg font-semibold mb-2">No Completed Fundraisers</h3>
                           <p className="text-muted-foreground">
-                            No fundraisers have been completed yet. Try another relay?
+                            No fundraisers have been completed yet. Check your account menu to switch relays.
                           </p>
                         </div>
-                        <RelaySelector className="w-full" />
                       </div>
                     </CardContent>
                   </Card>
@@ -326,6 +335,12 @@ const Index = () => {
       <CreateCampaignDialog 
         open={showCreateDialog} 
         onOpenChange={setShowCreateDialog} 
+      />
+
+      {/* Donate to Creator Dialog */}
+      <DonateToCreatorDialog 
+        open={showDonateDialog} 
+        onOpenChange={setShowDonateDialog} 
       />
 
       {/* Footer */}

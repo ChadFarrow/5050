@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarIcon, ImageIcon, Loader2, Clock } from "lucide-react";
+import { CalendarIcon, ImageIcon, Loader2, Clock, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useToast } from "@/hooks/useToast";
@@ -37,7 +39,7 @@ interface FundraiserForm {
   durationUnit: string;
   image: string;
   manualWinnerDraw: boolean;
-  lightningAddress: string;
+  nwcConnection: string;
 }
 
 const initialForm: FundraiserForm = {
@@ -55,19 +57,25 @@ const initialForm: FundraiserForm = {
   durationUnit: "hours",
   image: "",
   manualWinnerDraw: false,
-  lightningAddress: "",
+  nwcConnection: "",
 };
 
 export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const wallet = useWallet();
   const [form, setForm] = useState<FundraiserForm>(initialForm);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    try {
+      console.log('Updating form field:', field, 'with value type:', typeof value);
+      setForm(prev => ({ ...prev, [field]: value }));
+    } catch (error) {
+      console.error('Error updating form field:', field, error);
+      // Don't let form updates crash the app
+    }
   };
 
   // Calculate duration in seconds
@@ -96,22 +104,38 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
   };
 
   const validateForm = (): string | null => {
-    if (!form.title.trim()) return "Title is required";
-    if (!form.description.trim()) return "Description is required";
-    if (!form.podcast.trim()) return "Podcast name is required";
-    // Target amount is now optional - only validate if provided
-    if (form.target && parseInt(form.target) <= 0) return "Goal amount must be greater than 0 if specified";
-    if (!form.ticketPrice || parseInt(form.ticketPrice) <= 0) return "Valid ticket price is required";
-    
-    if (form.useDuration) {
-      if (!form.durationValue || parseInt(form.durationValue) <= 0) return "Valid duration is required";
-    } else if (!form.manualWinnerDraw) {
-      // Only require end date for automatic winner selection
-      if (!form.endDate) return "End date is required for automatic winner selection";
-      if (form.endDate <= new Date()) return "End date must be in the future";
+    try {
+      if (!form.title.trim()) return "Title is required";
+      if (!form.description.trim()) return "Description is required";
+      if (!form.podcast.trim()) return "Podcast name is required";
+      // Target amount is now optional - only validate if provided
+      if (form.target && parseInt(form.target) <= 0) return "Goal amount must be greater than 0 if specified";
+      if (!form.ticketPrice || parseInt(form.ticketPrice) <= 0) return "Valid ticket price is required";
+      
+      // Basic NWC validation during form submission only
+      if (form.nwcConnection && form.nwcConnection.trim().length > 0) {
+        const nwc = form.nwcConnection.trim();
+        if (!nwc.startsWith('nostr+walletconnect://')) {
+          return "NWC connection must start with nostr+walletconnect://";
+        }
+        if (nwc.length < 50) {
+          return "NWC connection appears incomplete";
+        }
+      }
+      
+      if (form.useDuration) {
+        if (!form.durationValue || parseInt(form.durationValue) <= 0) return "Valid duration is required";
+      } else if (!form.manualWinnerDraw) {
+        // Only require end date for automatic winner selection
+        if (!form.endDate) return "End date is required for automatic winner selection";
+        if (form.endDate <= new Date()) return "End date must be in the future";
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Form validation error:', error);
+      return "Validation error occurred. Please refresh the page and try again.";
     }
-    
-    return null;
   };
 
   const handleSubmit = async () => {
@@ -200,11 +224,9 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
         tags.push(["manual_draw", "true"]);
       }
 
-      // Add Lightning address from connected wallet
-      if (wallet.nodeInfo?.alias) {
-        // Convert node alias to Lightning address format
-        const lightningAddress = `${wallet.nodeInfo.alias}@getalby.com`;
-        tags.push(["lightning_address", lightningAddress]);
+      // Add NWC connection if provided
+      if (form.nwcConnection.trim()) {
+        tags.push(["nwc", form.nwcConnection.trim()]);
       }
 
       publishEvent({
@@ -477,6 +499,73 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
               </div>
             </div>
           </div>
+
+          {/* NWC Payment Setup */}
+          <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Zap className="h-4 w-4 text-orange-600" />
+                Payment Setup
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Configure how you'll receive payments from ticket sales. Without this, buyers will pay themselves (which fails).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="nwcConnection" className="text-xs">NWC Connection String</Label>
+                <Input
+                  id="nwcConnection"
+                  type="text"
+                  placeholder="nostr+walletconnect://..."
+                  value={form.nwcConnection || ""}
+                  onChange={(e) => {
+                    const value = e.target.value || "";
+                    console.log('📝 NWC onChange, length:', value.length);
+                    setForm(prev => ({
+                      ...prev,
+                      nwcConnection: value
+                    }));
+                  }}
+                  disabled={isPending}
+                  className="text-sm"
+                />
+              </div>
+              
+              {form.nwcConnection && form.nwcConnection.length > 50 && (
+                <div className="text-xs text-green-600 flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  Connection string detected ({form.nwcConnection.length} characters)
+                </div>
+              )}
+              
+              {!form.nwcConnection && (
+                <Alert>
+                  <Zap className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    <strong>⚠️ Payment Setup Required:</strong> Without an NWC connection, ticket buyers will try to pay themselves, which typically fails.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <p>
+                  Create a new NWC connection for this fundraiser:
+                </p>
+                {'alby' in window && (
+                  <div className="bg-blue-50 dark:bg-blue-950 p-2 rounded border">
+                    <p className="font-medium text-blue-800 dark:text-blue-200">📝 Alby Hub Setup:</p>
+                    <p className="text-blue-700 dark:text-blue-300">
+                      1. Open Alby Hub → Settings → Developer<br/>
+                      2. Click "Nostr Wallet Connect"<br/>
+                      3. Click "Create Connection"<br/>
+                      4. Copy the connection string and paste above
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Preview */}
           {form.ticketPrice && (

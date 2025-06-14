@@ -29,8 +29,14 @@ export type Campaign = Fundraiser;
 function validateFundraiserEvent(event: NostrEvent): boolean {
   if (event.kind !== 31950) return false;
 
-  const requiredTags = ['d', 'title', 'description', 'target', 'ticket_price', 'end_date', 'podcast'];
   const tags = new Map(event.tags.map(([name, value]) => [name, value]));
+
+  // Check if this is a deleted fundraiser (empty content + deleted tag)
+  if (!event.content && tags.has('deleted')) {
+    return false; // Skip deleted fundraisers
+  }
+
+  const requiredTags = ['d', 'title', 'description', 'target', 'ticket_price', 'end_date', 'podcast'];
 
   for (const tag of requiredTags) {
     if (!tags.has(tag) || !tags.get(tag)) return false;

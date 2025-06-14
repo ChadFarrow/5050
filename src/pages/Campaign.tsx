@@ -10,7 +10,6 @@ import { DrawWinnerCard } from "@/components/campaign/DrawWinnerCard";
 import { ParticipantsList } from "@/components/campaign/ParticipantsList";
 import { CampaignSidebar } from "@/components/campaign/CampaignSidebar";
 import { CampaignSkeleton } from "@/components/campaign/CampaignSkeleton";
-import { AddNWCConnection } from "@/components/AddNWCConnection";
 
 export default function Campaign() {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
@@ -74,12 +73,14 @@ export default function Campaign() {
               <DrawWinnerCard campaign={campaign} stats={stats} />
             )}
             
-            <ParticipantsList purchases={stats?.purchases || []} />
+            <ParticipantsList 
+              purchases={stats?.purchases || []} 
+              donations={stats?.donations || []}
+            />
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            <AddNWCConnection campaign={campaign} />
             <CampaignSidebar campaign={campaign} stats={stats} />
           </div>
         </div>

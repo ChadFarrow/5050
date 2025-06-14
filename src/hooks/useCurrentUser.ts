@@ -22,27 +22,22 @@ export function useCurrentUser() {
     }
   }, [nostr]);
 
-  const users = useMemo(() => {
-    const users: NUser[] = [];
+  const user = useMemo(() => {
+    const login = logins[0];
+    if (!login) return undefined;
 
-    for (const login of logins) {
-      try {
-        const user = loginToUser(login);
-        users.push(user);
-      } catch (error) {
-        console.warn('Skipped invalid login', login.id, error);
-      }
+    try {
+      return loginToUser(login);
+    } catch (error) {
+      console.warn('Skipped invalid login', login.id, error);
+      return undefined;
     }
-
-    return users;
   }, [logins, loginToUser]);
 
-  const user = users[0] as NUser | undefined;
   const author = useAuthor(user?.pubkey);
 
   return {
     user,
-    users,
     ...author.data,
   };
 }

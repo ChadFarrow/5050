@@ -133,17 +133,84 @@ Example:
 }
 ```
 
+## Fundraiser Deletion
+
+Fundraisers can be deleted by their creators **only if no tickets have been sold yet**. This allows creators to fix setup mistakes without impacting participants.
+
+To delete a fundraiser:
+1. Publish a new Kind 31950 event with the same `d` tag
+2. Set empty content (`""`)
+3. Add a `deleted` tag with the deletion timestamp
+
+```json
+{
+  "kind": 31950,
+  "content": "",
+  "tags": [
+    ["d", "weekly-show-2024-01"],
+    ["deleted", "1704067400"]
+  ],
+  "pubkey": "...",
+  "created_at": 1704067400,
+  "id": "...",
+  "sig": "..."
+}
+```
+
+Clients should:
+- Hide deleted fundraisers from listings
+- Prevent deletion if any ticket purchases exist
+- Only allow creators to delete their own fundraisers
+
+### Kind 31953: Prize Pool Donation
+
+A prize pool donation event represents a participant making a donation to increase the prize pool without purchasing tickets or being eligible for the raffle.
+
+**Required tags:**
+- `d` - unique identifier for this donation
+- `a` - fundraiser coordinate (kind:pubkey:d-tag)
+- `amount` - donation amount in millisats (string)
+- `bolt11` - lightning invoice that was paid
+- `payment_hash` - payment hash from the lightning payment
+
+**Optional tags:**
+- `zap_receipt` - event ID of the corresponding zap receipt (kind 9735)
+
+**Content:** Optional message from the donor
+
+Example:
+```json
+{
+  "kind": 31953,
+  "content": "Increasing the prize pool for everyone!",
+  "tags": [
+    ["d", "donation-xyz789"],
+    ["a", "31950:npub1234:weekly-show-2024-01"],
+    ["amount", "25000"],
+    ["bolt11", "lnbc250u1p..."],
+    ["payment_hash", "xyz789..."],
+    ["zap_receipt", "ghi012..."]
+  ],
+  "pubkey": "...",
+  "created_at": 1703462600,
+  "id": "...",
+  "sig": "..."
+}
+```
+
 ## Implementation Notes
 
-1. **Payment Integration**: Ticket purchases should integrate with NIP-57 Lightning Zaps for payments
+1. **Payment Integration**: Ticket purchases and donations should integrate with NIP-57 Lightning Zaps for payments
 2. **Fairness**: Random number generation for winner selection should be transparent and verifiable
-3. **Validation**: Clients should validate that ticket purchases have corresponding valid lightning payments
-4. **Fundraiser States**: Fundraisers can be in states: active, ended, or cancelled
-5. **Ticket Numbering**: Tickets should be numbered sequentially starting from 1 for each fundraiser
+3. **Validation**: Clients should validate that ticket purchases and donations have corresponding valid lightning payments
+4. **Prize Pool Donations**: Prize pool donations (Kind 31953) increase the total prize pool for all participants but do not provide raffle tickets or eligibility for winnings
+5. **Fundraiser States**: Fundraisers can be in states: active, ended, cancelled, or deleted
+6. **Ticket Numbering**: Tickets should be numbered sequentially starting from 1 for each fundraiser
+7. **Deletion Safety**: Only allow deletion of fundraisers with zero ticket sales to protect participants
 
 ## Security Considerations
 
-- Verify lightning payments before counting ticket purchases
+- Verify lightning payments before counting ticket purchases and donations
 - Use cryptographically secure random number generation for winner selection
 - Consider implementing dispute resolution mechanisms
 - Validate fundraiser end dates and prevent manipulation
