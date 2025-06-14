@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Target, Ticket, Trophy, Clock, ExternalLink, Crown, Trash2 } from "lucide-react";
+import { Target, Ticket, Trophy, Clock, ExternalLink, Crown, Trash2, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useAuthor } from "@/hooks/useAuthor";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
+import { DonateDialog } from "@/components/DonateDialog";
 import { DeleteFundraiserDialog } from "@/components/DeleteFundraiserDialog";
 import { genUserName } from "@/lib/genUserName";
 import { formatSats, formatTimeRemaining } from "@/lib/utils";
@@ -25,6 +26,7 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
   const author = useAuthor(fundraiser.pubkey);
   const { data: stats } = useCampaignStats(fundraiser.pubkey, fundraiser.dTag);
   const [showBuyDialog, setShowBuyDialog] = useState(false);
+  const [showDonateDialog, setShowDonateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const metadata = author.data?.metadata;
@@ -35,10 +37,12 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
   const timeRemaining = fundraiser.endDate - now;
 
   const totalRaised = stats?.totalRaised || 0;
+  const totalDonations = stats?.totalDonations || 0;
   const totalTickets = stats?.totalTickets || 0;
-  const progressPercent = fundraiser.target > 0 ? Math.min((totalRaised / fundraiser.target) * 100, 100) : 0;
+  const combinedTotal = totalRaised + totalDonations;
+  const progressPercent = fundraiser.target > 0 ? Math.min((combinedTotal / fundraiser.target) * 100, 100) : 0;
 
-  const potentialWinnings = Math.floor(totalRaised / 2);
+  const potentialWinnings = Math.floor(combinedTotal / 2);
   
   // Get winner information if fundraiser is complete
   const winner = stats?.result;
@@ -160,12 +164,18 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
               <span className="text-muted-foreground">Progress</span>
               <span className="font-medium">
                 {fundraiser.target > 0 
-                  ? `${formatSats(totalRaised)} / ${formatSats(fundraiser.target)}`
-                  : `${formatSats(totalRaised)} raised`
+                  ? `${formatSats(combinedTotal)} / ${formatSats(fundraiser.target)}`
+                  : `${formatSats(combinedTotal)} raised`
                 }
               </span>
             </div>
             {fundraiser.target > 0 && <Progress value={progressPercent} className="h-2" />}
+            {totalDonations > 0 && (
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Tickets: {formatSats(totalRaised)}</span>
+                <span>Prize Pool Donations: {formatSats(totalDonations)}</span>
+              </div>
+            )}
           </div>
 
           {/* Stats Grid */}
@@ -205,35 +215,78 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2 pt-2">
+          <div className="space-y-2 pt-2">
             {fundraiser.isActive && user ? (
-              <Button 
-                onClick={() => setShowBuyDialog(true)}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-sm"
-                size="sm"
-              >
-                <Ticket className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Buy Tickets</span>
-                <span className="sm:hidden">Buy</span>
-              </Button>
+              <div className="space-y-2">
+                <Button 
+                  onClick={() => setShowBuyDialog(true)}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-sm"
+                  size="sm"
+                >
+                  <Ticket className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Buy Tickets</span>
+                  <span className="sm:hidden">Buy</span>
+                </Button>
+                <div className="flex gap-1">
+                  <Button 
+                    onClick={() => setShowDonateDialog(true)}
+                    variant="outline"
+                    className="flex-1 text-sm border-pink-200 text-pink-600 hover:bg-pink-50 hover:text-pink-700 hover:border-pink-300"
+                    size="sm"
+                  >
+                    <Heart className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Donate to prize pool</span>
+                    <span className="sm:hidden">Donate</span>
+                  </Button>
+                  {fundraiser.podcastUrl && (
+                    <Button variant="outline" size="sm" asChild className="flex-shrink-0">
+                      <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
             ) : !user ? (
-              <Button variant="outline" className="flex-1 text-sm" size="sm" disabled>
-                <span className="hidden sm:inline">Login to Buy Tickets</span>
-                <span className="sm:hidden">Login to Buy</span>
-              </Button>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full text-sm" size="sm" disabled>
+                  <span className="hidden sm:inline">Login to Buy Tickets</span>
+                  <span className="sm:hidden">Login to Buy</span>
+                </Button>
+                <div className="flex gap-1">
+                  <Button variant="outline" className="flex-1 text-sm" size="sm" disabled>
+                    <span className="hidden sm:inline">Login to Donate</span>
+                    <span className="sm:hidden">Login</span>
+                  </Button>
+                  {fundraiser.podcastUrl && (
+                    <Button variant="outline" size="sm" asChild className="flex-shrink-0">
+                      <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
             ) : (
-              <Button variant="outline" className="flex-1 text-sm" size="sm" disabled>
-                <span className="hidden sm:inline">Fundraiser Ended</span>
-                <span className="sm:hidden">Ended</span>
-              </Button>
-            )}
-            
-            {fundraiser.podcastUrl && (
-              <Button variant="outline" size="sm" asChild className="flex-shrink-0">
-                <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </Button>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full text-sm" size="sm" disabled>
+                  <span className="hidden sm:inline">Fundraiser Ended</span>
+                  <span className="sm:hidden">Ended</span>
+                </Button>
+                <div className="flex gap-1">
+                  <Button variant="outline" className="flex-1 text-sm" size="sm" disabled>
+                    <span className="hidden sm:inline">Fundraiser Ended</span>
+                    <span className="sm:hidden">Ended</span>
+                  </Button>
+                  {fundraiser.podcastUrl && (
+                    <Button variant="outline" size="sm" asChild className="flex-shrink-0">
+                      <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -250,6 +303,12 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
         campaign={fundraiser}
         open={showBuyDialog}
         onOpenChange={setShowBuyDialog}
+      />
+
+      <DonateDialog 
+        campaign={fundraiser}
+        open={showDonateDialog}
+        onOpenChange={setShowDonateDialog}
       />
       
       <DeleteFundraiserDialog

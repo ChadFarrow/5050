@@ -678,9 +678,10 @@ export async function detectWalletNWC(): Promise<string | null> {
 export async function generateFundraiserInvoiceNWC(
   campaign: { nwc?: string; title: string },
   amountMsats: number,
-  ticketCount: number
+  ticketCount: number,
+  customDescription?: string
 ): Promise<string> {
-  const description = `${ticketCount} ticket${ticketCount > 1 ? 's' : ''} for ${campaign.title}`;
+  const description = customDescription || `${ticketCount} ticket${ticketCount > 1 ? 's' : ''} for ${campaign.title}`;
   
   if (!campaign.nwc) {
     throw new Error('No NWC connection configured for this fundraiser');

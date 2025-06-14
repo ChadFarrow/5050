@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ShoppingCart, User, Trophy, RefreshCw } from "lucide-react";
+import { ShoppingCart, User, Trophy, RefreshCw, Heart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
+import { DonateDialog } from "@/components/DonateDialog";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserTickets } from "@/hooks/useCampaignStats";
 import { useAuthorDisplay } from "@/lib/shared-utils";
@@ -19,6 +20,7 @@ interface CampaignSidebarProps {
 
 export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
   const [showBuyDialog, setShowBuyDialog] = useState(false);
+  const [showDonateDialog, setShowDonateDialog] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useCurrentUser();
   const { displayName: creatorName, profileImage: creatorImage } = useAuthorDisplay(campaign.pubkey);
@@ -122,6 +124,15 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
                 Buy Tickets
               </Button>
               
+              <Button 
+                onClick={() => setShowDonateDialog(true)}
+                variant="outline"
+                className="w-full border-pink-200 text-pink-600 hover:bg-pink-50 hover:text-pink-700 hover:border-pink-300"
+                size="lg"
+              >
+                <Heart className="h-5 w-5 mr-2" />
+                Donate to Prize Pool
+              </Button>
               
               <div className="text-center text-sm text-muted-foreground">
                 {formatSats(campaign.ticketPrice)} per ticket
@@ -157,6 +168,20 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
               <span className="font-medium">{formatSats(stats?.totalRaised || 0)}</span>
             </div>
             
+            {(stats?.totalDonations || 0) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Prize Pool Donations:</span>
+                <span className="font-medium">{formatSats(stats?.totalDonations || 0)}</span>
+              </div>
+            )}
+            
+            {(stats?.totalRaised || 0) > 0 && (stats?.totalDonations || 0) > 0 && (
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-muted-foreground font-medium">Total Prize Pool:</span>
+                <span className="font-semibold">{formatSats((stats?.totalRaised || 0) + (stats?.totalDonations || 0))}</span>
+              </div>
+            )}
+            
             <div className="flex justify-between">
               <span className="text-muted-foreground">End Date:</span>
               <span className="font-medium">
@@ -178,6 +203,12 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
         campaign={campaign}
         open={showBuyDialog}
         onOpenChange={setShowBuyDialog}
+      />
+
+      <DonateDialog
+        campaign={campaign}
+        open={showDonateDialog}
+        onOpenChange={setShowDonateDialog}
       />
     </>
   );

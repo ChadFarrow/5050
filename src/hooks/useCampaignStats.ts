@@ -3,10 +3,12 @@ import { useNostr } from '@nostrify/react';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 export interface CampaignStats {
-  totalRaised: number; // millisats
+  totalRaised: number; // millisats from tickets
+  totalDonations: number; // millisats from direct donations
   totalTickets: number;
   uniqueParticipants: number;
   purchases: TicketPurchase[];
+  donations: Donation[];
   result?: CampaignResult;
 }
 
@@ -32,6 +34,18 @@ export interface TicketPurchase {
   pubkey: string;
   amount: number; // millisats
   tickets: number;
+  createdAt: number;
+  paymentHash: string;
+  bolt11: string;
+  zapReceipt?: string;
+  message?: string;
+  event: NostrEvent;
+}
+
+export interface Donation {
+  id: string;
+  pubkey: string;
+  amount: number; // millisats
   createdAt: number;
   paymentHash: string;
   bolt11: string;
@@ -76,6 +90,49 @@ function eventToTicketPurchase(event: NostrEvent): TicketPurchase {
     pubkey: event.pubkey,
     amount: parseInt(tags.get('amount') || '0'),
     tickets: parseInt(tags.get('tickets') || '0'),
+    createdAt: event.created_at,
+    paymentHash: tags.get('payment_hash') || '',
+    bolt11: tags.get('bolt11') || '',
+    zapReceipt: tags.get('zap_receipt'),
+    message: event.content || undefined,
+    event,
+  };
+}
+
+function validateDonation(event: NostrEvent): boolean {
+  if (event.kind !== 31953) {
+    console.log('Invalid event kind:', event.kind, 'for donation event:', event.id);
+    return false;
+  }
+
+  const tags = new Map(event.tags.map(([name, value]) => [name, value]));
+  const requiredTags = ['d', 'a', 'amount', 'bolt11', 'payment_hash'];
+
+  for (const tag of requiredTags) {
+    if (!tags.has(tag) || !tags.get(tag)) {
+      console.log(`Missing or empty tag '${tag}' in donation event:`, event.id, 'tags:', Object.fromEntries(tags));
+      return false;
+    }
+  }
+
+  // Validate numeric fields
+  const amount = parseInt(tags.get('amount') || '0');
+
+  if (amount <= 0) {
+    console.log(`Invalid amount in donation event ${event.id}:`, { amount });
+    return false;
+  }
+
+  return true;
+}
+
+function eventToDonation(event: NostrEvent): Donation {
+  const tags = new Map(event.tags.map(([name, value]) => [name, value]));
+
+  return {
+    id: event.id,
+    pubkey: event.pubkey,
+    amount: parseInt(tags.get('amount') || '0'),
     createdAt: event.created_at,
     paymentHash: tags.get('payment_hash') || '',
     bolt11: tags.get('bolt11') || '',
@@ -139,10 +196,10 @@ export function useCampaignStats(pubkey: string, dTag: string) {
       // Query for ticket purchases for this campaign
       const campaignCoordinate = `31950:${pubkey}:${dTag}`;
       
-      const [purchaseEvents, resultEvents] = await Promise.all([
+      const [purchaseEvents, donationEvents, resultEvents] = await Promise.all([
         nostr.query(
           [{
-            kinds: [31951],
+            kinds: [31951], // Ticket purchases
             '#a': [campaignCoordinate],
             limit: 1000, // Should be enough for most campaigns
           }],
@@ -150,7 +207,15 @@ export function useCampaignStats(pubkey: string, dTag: string) {
         ),
         nostr.query(
           [{
-            kinds: [31952],
+            kinds: [31953], // Direct donations
+            '#a': [campaignCoordinate],
+            limit: 1000, // Should be enough for most campaigns
+          }],
+          { signal }
+        ),
+        nostr.query(
+          [{
+            kinds: [31952], // Campaign results
             authors: [pubkey],
             '#d': [dTag],
             limit: 1,
@@ -163,26 +228,42 @@ export function useCampaignStats(pubkey: string, dTag: string) {
       const validPurchaseEvents = purchaseEvents.filter(validateTicketPurchase);
       const purchases = validPurchaseEvents.map(eventToTicketPurchase);
 
+      // Filter and transform donation events
+      const validDonationEvents = donationEvents.filter(validateDonation);
+      const donations = validDonationEvents.map(eventToDonation);
+
       console.log(`Campaign stats for ${pubkey}:${dTag}:`, {
         totalPurchaseEvents: purchaseEvents.length,
         validPurchaseEvents: validPurchaseEvents.length,
-        invalidEvents: purchaseEvents.length - validPurchaseEvents.length,
-        purchases: purchases.length
+        invalidPurchaseEvents: purchaseEvents.length - validPurchaseEvents.length,
+        totalDonationEvents: donationEvents.length,
+        validDonationEvents: validDonationEvents.length,
+        invalidDonationEvents: donationEvents.length - validDonationEvents.length,
+        purchases: purchases.length,
+        donations: donations.length
       });
 
       // Sort by creation date
       purchases.sort((a, b) => a.createdAt - b.createdAt);
+      donations.sort((a, b) => a.createdAt - b.createdAt);
 
       // Calculate stats
       const totalRaised = purchases.reduce((sum, p) => sum + p.amount, 0);
+      const totalDonations = donations.reduce((sum, d) => sum + d.amount, 0);
       const totalTickets = purchases.reduce((sum, p) => sum + p.tickets, 0);
-      const uniqueParticipants = new Set(purchases.map(p => p.pubkey)).size;
+      const allParticipants = new Set([
+        ...purchases.map(p => p.pubkey),
+        ...donations.map(d => d.pubkey)
+      ]);
+      const uniqueParticipants = allParticipants.size;
 
       console.log(`Calculated stats:`, {
         totalRaised,
+        totalDonations,
         totalTickets,
         uniqueParticipants,
-        recentPurchases: purchases.slice(-3).map(p => ({ tickets: p.tickets, amount: p.amount, createdAt: p.createdAt }))
+        recentPurchases: purchases.slice(-3).map(p => ({ tickets: p.tickets, amount: p.amount, createdAt: p.createdAt })),
+        recentDonations: donations.slice(-3).map(d => ({ amount: d.amount, createdAt: d.createdAt }))
       });
 
       // Check for campaign result
@@ -194,9 +275,11 @@ export function useCampaignStats(pubkey: string, dTag: string) {
 
       const stats: CampaignStats = {
         totalRaised,
+        totalDonations,
         totalTickets,
         uniqueParticipants,
         purchases,
+        donations,
         result,
       };
 
@@ -234,6 +317,38 @@ export function useUserTickets(fundraiserPubkey: string, fundraiserDTag: string,
       const purchases = validEvents.map(eventToTicketPurchase);
 
       return purchases.sort((a, _b) => a.createdAt - a.createdAt);
+    },
+    enabled: !!fundraiserPubkey && !!fundraiserDTag && !!userPubkey,
+    staleTime: 15000,
+  });
+}
+
+export function useUserDonations(fundraiserPubkey: string, fundraiserDTag: string, userPubkey?: string) {
+  const { nostr } = useNostr();
+
+  return useQuery({
+    queryKey: ['user-donations', fundraiserPubkey, fundraiserDTag, userPubkey],
+    queryFn: async (c) => {
+      if (!userPubkey) return [];
+
+      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(3000)]);
+      
+      const fundraiserCoordinate = `31950:${fundraiserPubkey}:${fundraiserDTag}`;
+      
+      const events = await nostr.query(
+        [{
+          kinds: [31953], // Donation events
+          authors: [userPubkey],
+          '#a': [fundraiserCoordinate],
+          limit: 100,
+        }],
+        { signal }
+      );
+
+      const validEvents = events.filter(validateDonation);
+      const donations = validEvents.map(eventToDonation);
+
+      return donations.sort((a, _b) => a.createdAt - a.createdAt);
     },
     enabled: !!fundraiserPubkey && !!fundraiserDTag && !!userPubkey,
     staleTime: 15000,
