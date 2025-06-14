@@ -73,7 +73,10 @@ export default function Campaign() {
               <DrawWinnerCard campaign={campaign} stats={stats} />
             )}
             
-            <ParticipantsList purchases={stats?.purchases || []} />
+            <ParticipantsList 
+              purchases={stats?.purchases || []} 
+              donations={stats?.donations || []}
+            />
           </div>
 
           {/* Sidebar */}

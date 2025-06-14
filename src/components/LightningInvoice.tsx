@@ -117,6 +117,7 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
   const amountSats = Math.floor(invoice.amount_msat / 1000);
   const expiresAt = new Date(invoice.expires_at * 1000);
   const isExpired = Date.now() > invoice.expires_at * 1000;
+  
 
   return (
     <Card className="w-full max-w-md">
@@ -224,7 +225,15 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
           variant={showPaymentPrompt ? "default" : "outline"}
           className={`w-full ${showPaymentPrompt ? "bg-green-600 hover:bg-green-700 text-white animate-pulse" : ""}`}
           disabled={isExpired}
-          onClick={onPaymentComplete}
+          onClick={() => {
+            console.log('💰 "I\'ve paid this invoice" button clicked');
+            if (onPaymentComplete) {
+              console.log('✅ Calling onPaymentComplete callback');
+              onPaymentComplete();
+            } else {
+              console.log('❌ No onPaymentComplete callback provided');
+            }
+          }}
         >
           <QrCode className="h-4 w-4 mr-2" />
           {isExpired ? "Invoice Expired" : showPaymentPrompt ? "✓ I've Paid This Invoice" : "I've Paid This Invoice"}

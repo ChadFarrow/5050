@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -73,6 +74,7 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
   
   const [donationAmount, setDonationAmount] = useState("");
   const [message, setMessage] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState<LightningInvoiceType | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -177,16 +179,33 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
   };
 
   const handlePaymentComplete = async () => {
-    if (!currentInvoice) return;
+    console.log('🔘 handlePaymentComplete called');
+    
+    // Validation checks
+    if (!user) {
+      console.log('❌ User not logged in');
+      toast.error("Authentication Required", "Please log in to complete the donation");
+      return;
+    }
+    
+    if (!currentInvoice) {
+      console.log('❌ No current invoice found');
+      toast.error("Invoice Error", "No invoice found to process");
+      return;
+    }
+    
+    console.log('✅ Current invoice exists, proceeding with payment completion');
 
     try {
       setIsProcessingPayment(true);
+      console.log('⏳ Processing payment started');
 
       // Generate unique donation ID
       const donationId = `donation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Create campaign coordinate
       const campaignCoordinate = `31950:${campaign.pubkey}:${campaign.dTag}`;
+      console.log(`📝 Creating donation with campaign coordinate: ${campaignCoordinate}`);
 
       // Build tags for donation event (Kind 31953)
       const tags: string[][] = [
@@ -197,6 +216,11 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
         ["payment_hash", currentInvoice.payment_hash],
       ];
 
+      // Add anonymous tag if the donation is anonymous
+      if (isAnonymous) {
+        tags.push(["anonymous", "true"]);
+      }
+
       const eventData = {
         kind: 31953, // New event kind for donations
         content: message.trim(),
@@ -205,8 +229,28 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
       };
 
       const onSuccess = (eventId: unknown) => {
-        console.log('Donation event published successfully:', eventId);
-        console.log('Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
+        console.log('✅ Donation event published successfully:', eventId);
+        console.log('🔄 Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
+        
+        // Store donation in local storage as fallback until it appears in relays
+        const pendingDonation = {
+          id: donationId,
+          pubkey: user.pubkey,
+          amount: donationMsats,
+          createdAt: Math.floor(Date.now() / 1000),
+          paymentHash: currentInvoice.payment_hash,
+          bolt11: currentInvoice.bolt11,
+          message: message.trim() || undefined,
+          isAnonymous: isAnonymous,
+          event: eventId as any, // Placeholder for event
+        };
+        
+        const pendingDonationsKey = `pending-donations-${campaignCoordinate}`;
+        const existingJson = localStorage.getItem(pendingDonationsKey) || '[]';
+        const existingDonations = JSON.parse(existingJson);
+        existingDonations.push(pendingDonation);
+        localStorage.setItem(pendingDonationsKey, JSON.stringify(existingDonations));
+        console.log('💾 Stored donation in local storage as fallback');
         
         // Invalidate fundraisers query so the list updates immediately
         queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
@@ -215,21 +259,11 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
         
         console.log('Queries invalidated successfully');
         
-        // Also force multiple refreshes with increasing delays to ensure the event has propagated
+        // Force a refresh to show the pending donation immediately
         setTimeout(() => {
-          console.log('Forcing query refresh after 2s delay...');
+          console.log('Refreshing to show pending donation...');
           queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 2000);
-        
-        setTimeout(() => {
-          console.log('Forcing query refresh after 5s delay...');
-          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 5000);
-        
-        setTimeout(() => {
-          console.log('Forcing query refresh after 10s delay...');
-          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 10000);
+        }, 500);
 
         // Show success toast
         toast.success("Donation Complete", `You donated ${formatSats(donationMsats)} to ${campaign.title}`);
@@ -237,15 +271,26 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
         // Reset form and close dialog only after successful event publishing
         setDonationAmount("");
         setMessage("");
+        setIsAnonymous(false);
         setCurrentInvoice(null);
         onOpenChange(false);
       };
 
       const onError = (error: unknown) => {
-        console.error('Failed to publish donation event:', error);
-        toast.error("Donation Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
+        console.error('❌ Failed to publish donation event:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error("Donation Recording Failed", `Error: ${errorMsg}. Payment may have succeeded but failed to record.`);
+        setIsProcessingPayment(false); // Reset state on error
       };
 
+      console.log('📤 Publishing donation event:', eventData);
+      console.log('📤 Donation event tags breakdown:', {
+        d: eventData.tags.find(t => t[0] === 'd')?.[1],
+        a: eventData.tags.find(t => t[0] === 'a')?.[1],
+        amount: eventData.tags.find(t => t[0] === 'amount')?.[1],
+        anonymous: eventData.tags.find(t => t[0] === 'anonymous')?.[1]
+      });
+      
       // Publish event with normal method
       publishEvent(eventData, { onSuccess, onError });
     } catch (error) {
@@ -260,6 +305,7 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
     if (!isPending && !isProcessingPayment && !isCreatingInvoice) {
       setDonationAmount("");
       setMessage("");
+      setIsAnonymous(false);
       setCurrentInvoice(null);
       setShowConfig(false);
       onOpenChange(false);
@@ -350,6 +396,18 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
                 disabled={isPending || isProcessingPayment}
                 rows={2}
               />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="anonymous"
+                checked={isAnonymous}
+                onCheckedChange={(checked) => setIsAnonymous(checked as boolean)}
+                disabled={isPending || isProcessingPayment}
+              />
+              <Label htmlFor="anonymous" className="text-sm font-normal">
+                Donate anonymously
+              </Label>
             </div>
           </div>
 

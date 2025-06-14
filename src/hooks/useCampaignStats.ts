@@ -51,6 +51,7 @@ export interface Donation {
   bolt11: string;
   zapReceipt?: string;
   message?: string;
+  isAnonymous?: boolean;
   event: NostrEvent;
 }
 
@@ -101,7 +102,6 @@ function eventToTicketPurchase(event: NostrEvent): TicketPurchase {
 
 function validateDonation(event: NostrEvent): boolean {
   if (event.kind !== 31953) {
-    console.log('Invalid event kind:', event.kind, 'for donation event:', event.id);
     return false;
   }
 
@@ -110,7 +110,6 @@ function validateDonation(event: NostrEvent): boolean {
 
   for (const tag of requiredTags) {
     if (!tags.has(tag) || !tags.get(tag)) {
-      console.log(`Missing or empty tag '${tag}' in donation event:`, event.id, 'tags:', Object.fromEntries(tags));
       return false;
     }
   }
@@ -119,7 +118,6 @@ function validateDonation(event: NostrEvent): boolean {
   const amount = parseInt(tags.get('amount') || '0');
 
   if (amount <= 0) {
-    console.log(`Invalid amount in donation event ${event.id}:`, { amount });
     return false;
   }
 
@@ -138,6 +136,7 @@ function eventToDonation(event: NostrEvent): Donation {
     bolt11: tags.get('bolt11') || '',
     zapReceipt: tags.get('zap_receipt'),
     message: event.content || undefined,
+    isAnonymous: tags.get('anonymous') === 'true',
     event,
   };
 }
@@ -191,11 +190,27 @@ export function useCampaignStats(pubkey: string, dTag: string) {
   return useQuery({
     queryKey: ['fundraiser-stats', pubkey, dTag],
     queryFn: async (c) => {
-      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
+      console.log(`🚀 useCampaignStats queryFn called for ${pubkey}:${dTag}`);
+      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(10000)]);
       
       // Query for ticket purchases for this campaign
       const campaignCoordinate = `31950:${pubkey}:${dTag}`;
+      console.log(`🔍 Querying for campaign coordinate: ${campaignCoordinate}`);
       
+      // Get any pending donations from local storage as a fallback
+      const pendingDonationsKey = `pending-donations-${campaignCoordinate}`;
+      const pendingDonationsJson = localStorage.getItem(pendingDonationsKey) || '[]';
+      const pendingDonations = JSON.parse(pendingDonationsJson) as Donation[];
+      
+      // Clean up old pending donations (older than 24 hours)
+      const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
+      const validPendingDonations = pendingDonations.filter(d => d.createdAt > twentyFourHoursAgo);
+      if (validPendingDonations.length !== pendingDonations.length) {
+        localStorage.setItem(pendingDonationsKey, JSON.stringify(validPendingDonations));
+      }
+      
+      console.log(`💾 Found ${validPendingDonations.length} pending donations in local storage`);
+
       const [purchaseEvents, donationEvents, resultEvents] = await Promise.all([
         nostr.query(
           [{
@@ -229,8 +244,24 @@ export function useCampaignStats(pubkey: string, dTag: string) {
       const purchases = validPurchaseEvents.map(eventToTicketPurchase);
 
       // Filter and transform donation events
+      console.log(`🔍 Raw donation events from relays:`, donationEvents.length);
+      
       const validDonationEvents = donationEvents.filter(validateDonation);
-      const donations = validDonationEvents.map(eventToDonation);
+      const relayDonations = validDonationEvents.map(eventToDonation);
+      
+      // Remove any pending donations that now exist in relay results
+      const relayDonationIds = new Set(relayDonations.map(d => d.id));
+      const stillPendingDonations = validPendingDonations.filter(d => !relayDonationIds.has(d.id));
+      
+      // Update local storage with remaining pending donations
+      if (stillPendingDonations.length !== validPendingDonations.length) {
+        localStorage.setItem(pendingDonationsKey, JSON.stringify(stillPendingDonations));
+        console.log(`💾 Updated local storage: ${stillPendingDonations.length} still pending`);
+      }
+      
+      // Combine relay donations with pending donations
+      const donations = [...relayDonations, ...stillPendingDonations];
+      console.log(`📊 Total donations: ${donations.length} (${relayDonations.length} from relays + ${stillPendingDonations.length} pending)`);
 
       console.log(`Campaign stats for ${pubkey}:${dTag}:`, {
         totalPurchaseEvents: purchaseEvents.length,
@@ -240,7 +271,13 @@ export function useCampaignStats(pubkey: string, dTag: string) {
         validDonationEvents: validDonationEvents.length,
         invalidDonationEvents: donationEvents.length - validDonationEvents.length,
         purchases: purchases.length,
-        donations: donations.length
+        donations: donations.length,
+        sampleDonationEvents: donationEvents.slice(0, 2).map(e => ({
+          id: e.id.substring(0, 8),
+          kind: e.kind,
+          tags: Object.fromEntries(e.tags.map(([k, v]) => [k, v]))
+        })),
+        sampleDonations: donations.slice(0, 2)
       });
 
       // Sort by creation date
