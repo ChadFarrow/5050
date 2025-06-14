@@ -184,6 +184,48 @@ function eventToCampaignResult(event: NostrEvent): CampaignResult {
   };
 }
 
+// Helper function to store donation to local storage as fallback
+export function storePendingDonation(campaignPubkey: string, campaignDTag: string, donation: Donation) {
+  const campaignCoordinate = `31950:${campaignPubkey}:${campaignDTag}`;
+  const pendingDonationsKey = `pending-donations-${campaignCoordinate}`;
+  
+  try {
+    const existingJson = localStorage.getItem(pendingDonationsKey) || '[]';
+    const existingDonations = JSON.parse(existingJson) as Donation[];
+    
+    // Check if this donation already exists
+    const exists = existingDonations.some(d => d.id === donation.id);
+    if (!exists) {
+      existingDonations.push(donation);
+      localStorage.setItem(pendingDonationsKey, JSON.stringify(existingDonations));
+      console.log(`💾 Stored pending donation ${donation.id} to local storage`);
+    }
+  } catch (error) {
+    console.error('Failed to store pending donation:', error);
+  }
+}
+
+// Helper function to store ticket purchase to local storage as fallback
+export function storePendingPurchase(campaignPubkey: string, campaignDTag: string, purchase: TicketPurchase) {
+  const campaignCoordinate = `31950:${campaignPubkey}:${campaignDTag}`;
+  const pendingPurchasesKey = `pending-purchases-${campaignCoordinate}`;
+  
+  try {
+    const existingJson = localStorage.getItem(pendingPurchasesKey) || '[]';
+    const existingPurchases = JSON.parse(existingJson) as TicketPurchase[];
+    
+    // Check if this purchase already exists
+    const exists = existingPurchases.some(p => p.id === purchase.id);
+    if (!exists) {
+      existingPurchases.push(purchase);
+      localStorage.setItem(pendingPurchasesKey, JSON.stringify(existingPurchases));
+      console.log(`💾 Stored pending purchase ${purchase.id} to local storage`);
+    }
+  } catch (error) {
+    console.error('Failed to store pending purchase:', error);
+  }
+}
+
 export function useCampaignStats(pubkey: string, dTag: string) {
   const { nostr } = useNostr();
 
@@ -202,14 +244,24 @@ export function useCampaignStats(pubkey: string, dTag: string) {
       const pendingDonationsJson = localStorage.getItem(pendingDonationsKey) || '[]';
       const pendingDonations = JSON.parse(pendingDonationsJson) as Donation[];
       
-      // Clean up old pending donations (older than 24 hours)
+      // Get any pending purchases from local storage as a fallback
+      const pendingPurchasesKey = `pending-purchases-${campaignCoordinate}`;
+      const pendingPurchasesJson = localStorage.getItem(pendingPurchasesKey) || '[]';
+      const pendingPurchases = JSON.parse(pendingPurchasesJson) as TicketPurchase[];
+      
+      // Clean up old pending items (older than 24 hours)
       const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
       const validPendingDonations = pendingDonations.filter(d => d.createdAt > twentyFourHoursAgo);
       if (validPendingDonations.length !== pendingDonations.length) {
         localStorage.setItem(pendingDonationsKey, JSON.stringify(validPendingDonations));
       }
       
-      console.log(`💾 Found ${validPendingDonations.length} pending donations in local storage`);
+      const validPendingPurchases = pendingPurchases.filter(p => p.createdAt > twentyFourHoursAgo);
+      if (validPendingPurchases.length !== pendingPurchases.length) {
+        localStorage.setItem(pendingPurchasesKey, JSON.stringify(validPendingPurchases));
+      }
+      
+      console.log(`💾 Found ${validPendingDonations.length} pending donations and ${validPendingPurchases.length} pending purchases in local storage`);
 
       const [purchaseEvents, donationEvents, resultEvents] = await Promise.all([
         nostr.query(
@@ -241,7 +293,21 @@ export function useCampaignStats(pubkey: string, dTag: string) {
 
       // Filter and transform purchase events
       const validPurchaseEvents = purchaseEvents.filter(validateTicketPurchase);
-      const purchases = validPurchaseEvents.map(eventToTicketPurchase);
+      const relayPurchases = validPurchaseEvents.map(eventToTicketPurchase);
+      
+      // Remove any pending purchases that now exist in relay results
+      const relayPurchaseIds = new Set(relayPurchases.map(p => p.id));
+      const stillPendingPurchases = validPendingPurchases.filter(p => !relayPurchaseIds.has(p.id));
+      
+      // Update local storage with remaining pending purchases
+      if (stillPendingPurchases.length !== validPendingPurchases.length) {
+        localStorage.setItem(pendingPurchasesKey, JSON.stringify(stillPendingPurchases));
+        console.log(`💾 Updated local storage: ${stillPendingPurchases.length} purchases still pending`);
+      }
+      
+      // Combine relay purchases with pending purchases
+      const purchases = [...relayPurchases, ...stillPendingPurchases];
+      console.log(`🎟️ Total purchases: ${purchases.length} (${relayPurchases.length} from relays + ${stillPendingPurchases.length} pending)`);
 
       // Filter and transform donation events
       console.log(`🔍 Raw donation events from relays:`, donationEvents.length);
@@ -267,16 +333,16 @@ export function useCampaignStats(pubkey: string, dTag: string) {
         totalPurchaseEvents: purchaseEvents.length,
         validPurchaseEvents: validPurchaseEvents.length,
         invalidPurchaseEvents: purchaseEvents.length - validPurchaseEvents.length,
+        relayPurchases: relayPurchases.length,
+        pendingPurchases: stillPendingPurchases.length,
         totalDonationEvents: donationEvents.length,
         validDonationEvents: validDonationEvents.length,
         invalidDonationEvents: donationEvents.length - validDonationEvents.length,
+        relayDonations: relayDonations.length,
+        pendingDonations: stillPendingDonations.length,
         purchases: purchases.length,
         donations: donations.length,
-        sampleDonationEvents: donationEvents.slice(0, 2).map(e => ({
-          id: e.id.substring(0, 8),
-          kind: e.kind,
-          tags: Object.fromEntries(e.tags.map(([k, v]) => [k, v]))
-        })),
+        samplePurchases: purchases.slice(0, 2),
         sampleDonations: donations.slice(0, 2)
       });
 

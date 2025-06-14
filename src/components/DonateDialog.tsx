@@ -20,6 +20,7 @@ import { LightningInvoice } from "@/components/LightningInvoice";
 import { LightningConfig } from "@/components/LightningConfig";
 import type { Campaign } from "@/hooks/useCampaigns";
 import type { LightningInvoice as LightningInvoiceType } from "@/types/lightning";
+import type { NostrEvent } from "@nostrify/nostrify";
 import { useQueryClient } from '@tanstack/react-query';
 
 // Utility function to generate a deterministic payment hash from bolt11 invoice
@@ -242,7 +243,7 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
           bolt11: currentInvoice.bolt11,
           message: message.trim() || undefined,
           isAnonymous: isAnonymous,
-          event: eventId as any, // Placeholder for event
+          event: eventId as NostrEvent, // Event from published result
         };
         
         const pendingDonationsKey = `pending-donations-${campaignCoordinate}`;

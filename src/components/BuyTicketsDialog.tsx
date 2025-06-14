@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { generateFundraiserInvoiceNWC } from "@/lib/nwc";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
-import { useCampaignStats } from "@/hooks/useCampaignStats";
+import { useCampaignStats, storePendingPurchase, type TicketPurchase } from "@/hooks/useCampaignStats";
 import { useWallet } from "@/hooks/useWallet";
 import { useToastUtils } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
@@ -20,6 +20,7 @@ import { LightningInvoice } from "@/components/LightningInvoice";
 import { LightningConfig } from "@/components/LightningConfig";
 import type { Campaign } from "@/hooks/useCampaigns";
 import type { LightningInvoice as LightningInvoiceType } from "@/types/lightning";
+import type { NostrEvent } from "@nostrify/nostrify";
 import { useQueryClient } from '@tanstack/react-query';
 
 // Utility function to generate a deterministic payment hash from bolt11 invoice
@@ -215,9 +216,25 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         created_at: Math.floor(Date.now() / 1000),
       };
 
-      const onSuccess = (eventId: unknown) => {
-        console.log('Ticket purchase event published successfully:', eventId);
+      const onSuccess = (signedEvent: NostrEvent) => {
+        console.log('✅ Ticket purchase event published successfully:', signedEvent.id);
         console.log('Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
+        
+        // Store purchase in local storage as fallback until it appears in relays
+        const pendingPurchase: TicketPurchase = {
+          id: signedEvent.id,
+          pubkey: signedEvent.pubkey,
+          amount: totalCost,
+          tickets: tickets,
+          createdAt: signedEvent.created_at,
+          paymentHash: currentInvoice.payment_hash,
+          bolt11: currentInvoice.bolt11,
+          message: message.trim() || undefined,
+          event: signedEvent,
+        };
+        
+        storePendingPurchase(campaign.pubkey, campaign.dTag, pendingPurchase);
+        console.log('💾 Stored purchase in local storage as fallback');
         
         // Invalidate fundraisers query so the list updates immediately
         queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
@@ -226,21 +243,11 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         
         console.log('Queries invalidated successfully');
         
-        // Also force multiple refreshes with increasing delays to ensure the event has propagated
+        // Force a refresh to show the pending purchase immediately
         setTimeout(() => {
-          console.log('Forcing query refresh after 2s delay...');
+          console.log('Refreshing to show pending purchase...');
           queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 2000);
-        
-        setTimeout(() => {
-          console.log('Forcing query refresh after 5s delay...');
-          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 5000);
-        
-        setTimeout(() => {
-          console.log('Forcing query refresh after 10s delay...');
-          queryClient.refetchQueries({ queryKey: ['fundraiser-stats', campaign.pubkey, campaign.dTag] });
-        }, 10000);
+        }, 500);
 
         // Show success toast
         toast.success("Tickets Purchased", `You purchased ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`);
