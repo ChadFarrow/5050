@@ -26,7 +26,7 @@ export function useWinnerNotification() {
 🏆 Out of ${result.totalTickets} tickets sold
 
 To claim your prize:
-1. Visit: ${createCampaignUrl(campaign)}
+1. Visit: ${createCampaignUrl(campaign, true)}
 2. Look for the "Claim Prize" button
 3. Enter your Lightning address or invoice
 4. The campaign creator will send your winnings
@@ -69,7 +69,7 @@ Creator: ${campaign.podcast}`;
         console.warn('NIP-04 encryption not available, sending public mention instead');
         publishEvent({
           kind: 1, // Text note
-          content: `🎉 @${winnerPubkey} won the "${campaign.title}" raffle! Ticket #${result.winningTicket} won ${Math.floor(result.winnerAmount / 1000)} sats! Visit ${window.location.origin}/campaign/${campaign.pubkey}/${campaign.dTag} to claim your prize.`,
+          content: `🎉 @${winnerPubkey} won the "${campaign.title}" raffle! Ticket #${result.winningTicket} won ${Math.floor(result.winnerAmount / 1000)} sats! Visit ${createCampaignUrl(campaign, true)} to claim your prize.`,
           tags: [
             ['p', winnerPubkey],
             ['t', 'raffle'],
@@ -113,7 +113,7 @@ The winner has submitted their payment information to claim their ${Math.floor(r
 ${winnerMessage ? `💬 Winner's Message: "${winnerMessage}"` : ''}
 
 Visit your campaign to copy the payment information and send the prize:
-${createCampaignUrl(campaign)}
+${createCampaignUrl(campaign, true)}
 
 This is an automated notification sent when a winner claims their prize.`;
 
@@ -150,7 +150,7 @@ This is an automated notification sent when a winner claims their prize.`;
         console.warn('NIP-04 encryption not available, sending public mention instead');
         publishEvent({
           kind: 1, // Text note
-          content: `🎯 @${campaign.pubkey} Prize claimed for "${campaign.title}"! Winner submitted ${paymentMethod} for ${Math.floor(result.winnerAmount / 1000)} sats. Visit ${createCampaignUrl(campaign)} to process payout.`,
+          content: `🎯 @${campaign.pubkey} Prize claimed for "${campaign.title}"! Winner submitted ${paymentMethod} for ${Math.floor(result.winnerAmount / 1000)} sats. Visit ${createCampaignUrl(campaign, true)} to process payout.`,
           tags: [
             ['p', campaign.pubkey],
             ['t', 'raffle'],
