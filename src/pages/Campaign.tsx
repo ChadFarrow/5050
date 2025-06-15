@@ -70,7 +70,7 @@ export default function Campaign() {
             <CampaignHeader campaign={campaign} stats={stats} />
             
             {stats?.result && (
-              <WinnerDisplay result={stats.result} />
+              <WinnerDisplay result={stats.result} campaignPubkey={campaign.pubkey} campaignDTag={campaign.dTag} />
             )}
             
             {stats?.result && (

@@ -34,14 +34,15 @@ export function usePrizeClaims(campaignPubkey: string, campaignDTag: string) {
           "#a": [fundraiserCoordinate],
         },
       ]);
-      
+
       const events: NostrEvent[] = [];
       for await (const msg of eventsIterable) {
         if (msg[0] === 'EVENT') {
           events.push(msg[2]);
+        } else if (msg[0] === 'EOSE') {
+          break;
         }
       }
-
       const claims: PrizeClaim[] = [];
 
       for (const event of events) {
