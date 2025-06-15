@@ -99,13 +99,13 @@ export function RelaySelector(props: RelaySelectorProps) {
           <CommandInput 
             placeholder="Search relays or type URL..." 
             value={inputValue}
-            onValueChange={setInputValue}
+            onChange={(e) => setInputValue(e.target.value)}
           />
           <CommandList>
             <CommandEmpty>
               {inputValue && isValidRelayInput(inputValue) ? (
                 <CommandItem
-                  onSelect={() => handleAddCustomRelay(inputValue)}
+                  onClick={() => handleAddCustomRelay(inputValue)}
                   className="cursor-pointer"
                 >
                   <Plus className="mr-2 h-4 w-4" />
@@ -132,9 +132,8 @@ export function RelaySelector(props: RelaySelectorProps) {
                 .map((option) => (
                   <CommandItem
                     key={option.url}
-                    value={option.url}
-                    onSelect={(currentValue) => {
-                      setSelectedRelay(normalizeRelayUrl(currentValue));
+                    onClick={() => {
+                      setSelectedRelay(normalizeRelayUrl(option.url));
                       setOpen(false);
                       setInputValue("");
                     }}
