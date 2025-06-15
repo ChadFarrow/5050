@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoginArea } from "@/components/auth/LoginArea";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useFundraisers } from "@/hooks/useCampaigns";
 import { useAutoWinnerSelection } from "@/hooks/useAutoWinnerSelection";
@@ -119,6 +120,7 @@ const Index = () => {
               >
                 <Heart className="h-4 w-4" />
               </Button>
+              <ThemeToggle />
               <LoginArea className="max-w-32 sm:max-w-60" />
             </div>
           </div>

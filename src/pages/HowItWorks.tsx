@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const HowItWorks = () => {
   return (
@@ -19,13 +20,16 @@ const HowItWorks = () => {
                 </Link>
               </Button>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 rounded-lg">
-                <Trophy className="h-5 w-5 text-white" />
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 rounded-lg">
+                  <Trophy className="h-5 w-5 text-white" />
+                </div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  PodRaffle
+                </h1>
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                PodRaffle
-              </h1>
+              <ThemeToggle />
             </div>
           </div>
         </div>

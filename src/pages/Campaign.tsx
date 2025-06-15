@@ -14,6 +14,7 @@ import { DrawWinnerCard } from "@/components/campaign/DrawWinnerCard";
 import { ParticipantsList } from "@/components/campaign/ParticipantsList";
 import { CampaignSidebar } from "@/components/campaign/CampaignSidebar";
 import { CampaignSkeleton } from "@/components/campaign/CampaignSkeleton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Campaign() {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
@@ -55,13 +56,14 @@ export default function Campaign() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-950 dark:via-blue-950 dark:to-indigo-950">
       <div className="container mx-auto px-4 py-8">
         {/* Back Button */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <Button variant="ghost" asChild>
             <a href="/" className="flex items-center">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Campaigns
             </a>
           </Button>
+          <ThemeToggle />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">

@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 // Mock data for demo
 const mockCampaigns = [
@@ -97,7 +98,7 @@ export default function Demo() {
               </div>
             </div>
             
-            <div className="w-6 sm:w-24" /> {/* Spacer for centering */}
+            <ThemeToggle />
           </div>
         </div>
       </header>
