@@ -228,7 +228,7 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
 
           {/* Action Buttons */}
           <div className="space-y-2 pt-2">
-            {fundraiser.isActive && user ? (
+            {fundraiser.isActive && !winner && user ? (
               <div className="space-y-2">
                 <Button 
                   onClick={() => setShowBuyDialog(true)}
@@ -282,13 +282,13 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
             ) : (
               <div className="space-y-2">
                 <Button variant="outline" className="w-full text-sm" size="sm" disabled>
-                  <span className="hidden sm:inline">Fundraiser Ended</span>
-                  <span className="sm:hidden">Ended</span>
+                  <span className="hidden sm:inline">{winner ? "Winner Selected" : "Fundraiser Ended"}</span>
+                  <span className="sm:hidden">{winner ? "Won" : "Ended"}</span>
                 </Button>
                 <div className="flex gap-1">
                   <Button variant="outline" className="flex-1 text-sm" size="sm" disabled>
-                    <span className="hidden sm:inline">Fundraiser Ended</span>
-                    <span className="sm:hidden">Ended</span>
+                    <span className="hidden sm:inline">{winner ? "Winner Selected" : "Fundraiser Ended"}</span>
+                    <span className="sm:hidden">{winner ? "Won" : "Ended"}</span>
                   </Button>
                   {fundraiser.podcastUrl && (
                     <Button variant="outline" size="sm" asChild className="flex-shrink-0">

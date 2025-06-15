@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Plus, Trophy, Zap, Users, DollarSign, Trash2, Heart } from "lucide-react";
+import { Plus, Trophy, Trash2, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoginArea } from "@/components/auth/LoginArea";
@@ -94,6 +94,9 @@ const Index = () => {
             
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
+                <Link to="/how-it-works">How It Works</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
                 <Link to="/demo">View Demo</Link>
               </Button>
               <Button variant="outline" size="sm" className="sm:hidden" asChild>
@@ -134,43 +137,6 @@ const Index = () => {
             while helping podcasters fund their shows. Built on Nostr with Lightning payments.
           </p>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
-            <Card className="border-purple-200 dark:border-purple-800">
-              <CardHeader className="text-center pb-3">
-                <Zap className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-purple-600 mb-2" />
-                <CardTitle className="text-base sm:text-lg">Lightning Fast</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground">
-                  Instant payments with Bitcoin Lightning Network
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-blue-200 dark:border-blue-800">
-              <CardHeader className="text-center pb-3">
-                <Users className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-blue-600 mb-2" />
-                <CardTitle className="text-base sm:text-lg">Fair & Transparent</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground">
-                  Verifiable random winner selection on Nostr
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-teal-200 dark:border-teal-800 sm:col-span-2 lg:col-span-1">
-              <CardHeader className="text-center pb-3">
-                <DollarSign className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-teal-600 mb-2" />
-                <CardTitle className="text-base sm:text-lg">50/50 Split</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground">
-                  Half to the winner, half to support the podcast
-                </p>
-              </CardContent>
-            </Card>
-          </div>
 
           {user && (
             <Button 

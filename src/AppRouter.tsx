@@ -4,6 +4,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import Campaign from "./pages/Campaign";
 import Demo from "./pages/Demo";
+import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
 
 export function AppRouter() {
@@ -16,6 +17,7 @@ export function AppRouter() {
         <Route path="/campaign/:pubkey/:dTag" element={<Campaign />} />
         <Route path="/:nip19" element={<Campaign />} />
         <Route path="/demo" element={<Demo />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
