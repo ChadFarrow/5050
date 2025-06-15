@@ -11,7 +11,7 @@ export function createCampaignUrl(campaign: Campaign, useProductionUrl = false):
       pubkey: campaign.pubkey,
       identifier: campaign.dTag,
     });
-    const baseUrl = useProductionUrl ? 'https://www.5050pods.com' : window.location.origin;
+    const baseUrl = useProductionUrl ? 'https://5050-xi.vercel.app' : window.location.origin;
     return `${baseUrl}/${naddr}`;
   } catch (error) {
     console.error('Failed to encode naddr:', error);
