@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx'
 import { RelaySelector } from '@/components/RelaySelector';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
+import { createNostrProfileUrl } from '@/lib/shared-utils';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LightningConfig } from '@/components/LightningConfig';
@@ -39,7 +40,15 @@ export function AccountSwitcher() {
             <AvatarFallback>{getDisplayName(currentUser).charAt(0)}</AvatarFallback>
           </Avatar>
           <div className='flex-1 text-left hidden md:block truncate'>
-            <p className='font-medium text-sm truncate'>{getDisplayName(currentUser)}</p>
+            <a 
+              href={createNostrProfileUrl(currentUser.pubkey)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className='font-medium text-sm truncate hover:text-purple-600 transition-colors'
+              onClick={(e) => e.stopPropagation()}
+            >
+              {getDisplayName(currentUser)}
+            </a>
           </div>
           <ChevronDown className='w-4 h-4 text-muted-foreground' />
         </button>

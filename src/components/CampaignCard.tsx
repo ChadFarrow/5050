@@ -14,6 +14,7 @@ import { DonateDialog } from "@/components/DonateDialog";
 import { DeleteFundraiserDialog } from "@/components/DeleteFundraiserDialog";
 import { genUserName } from "@/lib/genUserName";
 import { formatSats, formatTimeRemaining } from "@/lib/utils";
+import { createNostrProfileUrl } from "@/lib/shared-utils";
 import type { Fundraiser } from "@/hooks/useCampaigns";
 import { nip19 } from 'nostr-tools';
 
@@ -64,7 +65,14 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
                 <AvatarFallback>{displayName[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{displayName}</p>
+                <a 
+                  href={createNostrProfileUrl(fundraiser.pubkey)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium truncate hover:text-purple-600 transition-colors"
+                >
+                  {displayName}
+                </a>
                 <p className="text-xs text-muted-foreground truncate">{fundraiser.podcast}</p>
               </div>
             </div>
@@ -157,9 +165,14 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">
+                  <a 
+                    href={createNostrProfileUrl(winner.winnerPubkey)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium truncate hover:text-purple-600 transition-colors"
+                  >
                     {winnerAuthor.data?.metadata?.name ?? genUserName(winner.winnerPubkey)}
-                  </p>
+                  </a>
                   <p className="text-xs text-muted-foreground">
                     Ticket #{winner.winningTicket} • Won {formatSats(winner.winnerAmount)}
                   </p>

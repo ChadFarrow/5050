@@ -2,7 +2,7 @@ import { Trophy, Calendar, User, Hash } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatSats } from "@/lib/utils";
-import { useAuthorDisplay } from "@/lib/shared-utils";
+import { useAuthorDisplay, createNostrProfileUrl } from "@/lib/shared-utils";
 import type { CampaignResult } from "@/hooks/useCampaignStats";
 
 interface WinnerDisplayProps {
@@ -58,7 +58,14 @@ export function WinnerDisplay({ result }: WinnerDisplayProps) {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <div className="font-medium">{displayName}</div>
+            <a 
+              href={createNostrProfileUrl(result.winnerPubkey)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium hover:text-purple-600 transition-colors"
+            >
+              {displayName}
+            </a>
             <div className="text-sm text-muted-foreground">
               Won {formatSats(result.winnerAmount)}
             </div>

@@ -7,7 +7,7 @@ import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
 import { DonateDialog } from "@/components/DonateDialog";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserTickets } from "@/hooks/useCampaignStats";
-import { useAuthorDisplay } from "@/lib/shared-utils";
+import { useAuthorDisplay, createNostrProfileUrl } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
 import type { Campaign } from "@/hooks/useCampaigns";
@@ -74,7 +74,14 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className="font-medium">{creatorName}</div>
+                <a 
+                  href={createNostrProfileUrl(campaign.pubkey)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium hover:text-purple-600 transition-colors"
+                >
+                  {creatorName}
+                </a>
                 <div className="text-sm text-muted-foreground">
                   {campaign.podcast}
                 </div>

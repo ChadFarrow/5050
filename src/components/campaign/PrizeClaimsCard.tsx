@@ -8,8 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { usePrizeClaims } from "@/hooks/usePrizeClaims";
-import { useToastUtils } from "@/lib/shared-utils";
-import { useAuthorDisplay } from "@/lib/shared-utils";
+import { useToastUtils, useAuthorDisplay, createNostrProfileUrl } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
 import { ConfirmPayoutButton } from "./ConfirmPayoutButton";
 import type { Campaign } from "@/hooks/useCampaigns";
@@ -133,7 +132,14 @@ function ClaimItem({ claim, result, onCopy, onOpenLightning, isCopied }: ClaimIt
             </AvatarFallback>
           </Avatar>
           <div>
-            <div className="font-medium">{displayName}</div>
+            <a 
+              href={createNostrProfileUrl(claim.pubkey)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium hover:text-purple-600 transition-colors"
+            >
+              {displayName}
+            </a>
             <div className="text-sm text-muted-foreground">
               Claimed {claimDate.toLocaleString()}
             </div>

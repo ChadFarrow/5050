@@ -2,6 +2,7 @@ import { useToast } from '@/hooks/useToast';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
 import type { NostrMetadata } from '@nostrify/nostrify';
+import { nip19 } from 'nostr-tools';
 
 // Toast Utilities
 export const useToastUtils = () => {
@@ -56,6 +57,18 @@ export const useToastUtils = () => {
   };
 };
 
+// Nostr Profile URL Utilities
+export const createNostrProfileUrl = (pubkey: string): string => {
+  try {
+    const npub = nip19.npubEncode(pubkey);
+    return `https://nosta.me/${npub}`;
+  } catch (error) {
+    console.error('Failed to encode pubkey to npub:', error);
+    // Fallback to raw pubkey if encoding fails
+    return `https://nosta.me/${pubkey}`;
+  }
+};
+
 // Author Display Hook
 export const useAuthorDisplay = (pubkey: string) => {
   const author = useAuthor(pubkey);
@@ -64,6 +77,7 @@ export const useAuthorDisplay = (pubkey: string) => {
   return {
     displayName: metadata?.name ?? genUserName(pubkey),
     profileImage: metadata?.picture,
+    profileUrl: createNostrProfileUrl(pubkey),
     isLoading: author.isLoading,
     error: author.error,
     metadata

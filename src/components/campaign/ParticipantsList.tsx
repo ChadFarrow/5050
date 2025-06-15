@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatSats } from "@/lib/utils";
-import { useAuthorDisplay } from "@/lib/shared-utils";
+import { useAuthorDisplay, createNostrProfileUrl } from "@/lib/shared-utils";
 import type { TicketPurchase, Donation } from "@/hooks/useCampaignStats";
 
 // Combined type for participants (both purchases and donations)
@@ -110,7 +110,20 @@ function ParticipantItem({ participant }: { participant: Participant }) {
       
       <div className="flex-1 space-y-2">
         <div className="flex items-center justify-between">
-          <div className="font-medium">{finalDisplayName}</div>
+          <div className="font-medium">
+            {shouldShowIdentity ? (
+              <a 
+                href={createNostrProfileUrl(participant.pubkey)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-purple-600 transition-colors"
+              >
+                {finalDisplayName}
+              </a>
+            ) : (
+              finalDisplayName
+            )}
+          </div>
           <div className="text-xs text-muted-foreground">
             {participantDate.toLocaleDateString()}
           </div>
