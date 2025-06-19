@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { formatSats } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { DeleteFundraiserDialog } from "@/components/DeleteFundraiserDialog";
-import type { Campaign } from "@/hooks/useCampaigns";
-import type { CampaignStats } from "@/hooks/useCampaignStats";
+import type { Fundraiser } from "@/hooks/useCampaigns";
+import type { FundraiserStats } from "@/hooks/useCampaignStats";
 
 interface CampaignHeaderProps {
-  campaign: Campaign;
-  stats?: CampaignStats;
+  campaign: Fundraiser;
+  stats?: FundraiserStats;
 }
 
 export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {

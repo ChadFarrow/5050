@@ -8,13 +8,13 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useToastUtils } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
-import type { Campaign } from "@/hooks/useCampaigns";
-import type { CampaignResult } from "@/hooks/useCampaignStats";
+import type { Fundraiser } from "@/hooks/useCampaigns";
+import type { FundraiserResult } from "@/hooks/useCampaignStats";
 import { useQueryClient } from '@tanstack/react-query';
 
 interface MarkCompletedCardProps {
-  campaign: Campaign;
-  result?: CampaignResult;
+  campaign: Fundraiser;
+  result?: FundraiserResult;
   hasTicketSales: boolean;
 }
 
@@ -25,13 +25,13 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
   const queryClient = useQueryClient();
   const [confirmChecked, setConfirmChecked] = useState(false);
 
-  // Check if current user is the campaign creator
+  // Check if current user is the fundraiser creator
   const isCreator = user?.pubkey === campaign.pubkey;
   
   // Check if already marked as completed
   const isAlreadyCompleted = result?.event.tags.some(tag => tag[0] === 'manual_completed');
   
-  // Only show for creators on active campaigns, or campaigns with winners but no payout confirmation
+  // Only show for creators on active fundraisers, or fundraisers with winners but no payout confirmation
   if (!isCreator || isAlreadyCompleted || (!campaign.isActive && !result)) {
     return null;
   }
@@ -44,7 +44,7 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
       const newTags = [
         ...result.event.tags,
         ["manual_completed", Math.floor(Date.now() / 1000).toString()],
-        ["completion_note", "Manually marked as completed by campaign creator"]
+        ["completion_note", "Manually marked as completed by fundraiser creator"]
       ];
 
       const content = `${result.message}\n\n✅ Fundraiser manually marked as completed by creator.`;
@@ -77,7 +77,7 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
         ["d", campaign.dTag],
         ["a", `31950:${campaign.pubkey}:${campaign.dTag}`],
         ["manual_completed", Math.floor(Date.now() / 1000).toString()],
-        ["completion_note", "Campaign manually closed by creator without winner selection"]
+        ["completion_note", "Fundraiser manually closed by creator without winner selection"]
       ];
 
       const content = hasTicketSales 

@@ -11,7 +11,7 @@ import { Link } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 // Mock data for demo
-const mockCampaigns = [
+const mockFundraisers = [
   {
     id: "1",
     title: "Tech Talk Weekly Fundraiser",
@@ -65,27 +65,27 @@ const mockCampaigns = [
 ];
 
 export default function Demo() {
-  const [selectedCampaign, setSelectedCampaign] = useState(mockCampaigns[0]);
+  const [selectedFundraiser, setSelectedFundraiser] = useState(mockFundraisers[0]);
 
   const formatSats = (millisats: number) => {
     const sats = Math.floor(millisats / 1000);
     return `${sats.toLocaleString()} sats`;
   };
 
-  const getProgressData = (campaign: {
+  const getProgressData = (fundraiser: {
     currentAmount: number;
     donationAmount?: number;
     target: number;
   }) => {
-    const totalRaised = campaign.currentAmount;
-    const totalDonations = campaign.donationAmount || 0;
+    const totalRaised = fundraiser.currentAmount;
+    const totalDonations = fundraiser.donationAmount || 0;
     const combinedTotal = totalRaised + totalDonations;
     
-    if (campaign.target > 0) {
-      // Campaign with goal
-      const totalProgressPercent = Math.min((combinedTotal / campaign.target) * 100, 100);
-      const ticketProgressPercent = Math.min((totalRaised / campaign.target) * 100, 100);
-      const donationProgressPercent = Math.min((totalDonations / campaign.target) * 100, 100);
+    if (fundraiser.target > 0) {
+      // Fundraiser with goal
+      const totalProgressPercent = Math.min((combinedTotal / fundraiser.target) * 100, 100);
+      const ticketProgressPercent = Math.min((totalRaised / fundraiser.target) * 100, 100);
+      const donationProgressPercent = Math.min((totalDonations / fundraiser.target) * 100, 100);
       
       if (totalDonations > 0 && totalRaised > 0) {
         // Show split progress when both tickets and donations exist
@@ -105,7 +105,7 @@ export default function Demo() {
         };
       }
     } else {
-      // Open-ended campaign logic (if needed)
+      // Open-ended fundraiser logic (if needed)
       return {
         showSplit: false,
         totalProgress: combinedTotal > 0 ? 100 : 0,
@@ -158,60 +158,60 @@ export default function Demo() {
             </h2>
             <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto px-4">
               Explore how podcasters and listeners interact with 50/50 fundraisers. 
-              Click on different campaigns to see how the platform works.
+              Click on different fundraisers to see how the platform works.
             </p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-            {/* Campaign List */}
+            {/* Fundraiser List */}
             <div className="lg:col-span-2">
-              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Active & Completed Campaigns</h3>
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Active & Completed Fundraisers</h3>
               <div className="space-y-4 sm:space-y-6">
-                {mockCampaigns.map((campaign) => (
+                {mockFundraisers.map((fundraiser) => (
                   <Card 
-                    key={campaign.id}
+                    key={fundraiser.id}
                     className={`cursor-pointer transition-all duration-200 ${
-                      selectedCampaign.id === campaign.id 
+                      selectedFundraiser.id === fundraiser.id 
                         ? 'ring-2 ring-purple-500 shadow-lg' 
                         : 'hover:shadow-md hover:border-purple-200'
                     }`}
-                    onClick={() => setSelectedCampaign(campaign)}
+                    onClick={() => setSelectedFundraiser(fundraiser)}
                   >
                     <CardHeader>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
                           <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${campaign.creator}`} />
-                            <AvatarFallback>{campaign.creator[0]}</AvatarFallback>
+                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${fundraiser.creator}`} />
+                            <AvatarFallback>{fundraiser.creator[0]}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
-                            <CardTitle className="text-base sm:text-lg leading-tight">{campaign.title}</CardTitle>
-                            <CardDescription className="text-sm truncate">{campaign.podcast} • by {campaign.creator}</CardDescription>
+                            <CardTitle className="text-base sm:text-lg leading-tight">{fundraiser.title}</CardTitle>
+                            <CardDescription className="text-sm truncate">{fundraiser.podcast} • by {fundraiser.creator}</CardDescription>
                           </div>
                         </div>
-                        <Badge variant={campaign.isActive ? "default" : "secondary"} className="flex-shrink-0">
-                          {campaign.isActive ? "Active" : "Ended"}
+                        <Badge variant={fundraiser.isActive ? "default" : "secondary"} className="flex-shrink-0">
+                          {fundraiser.isActive ? "Active" : "Ended"}
                         </Badge>
                       </div>
                     </CardHeader>
                     
                     <CardContent>
-                      {campaign.image && (
+                      {fundraiser.image && (
                         <div className="aspect-video rounded-lg overflow-hidden mb-4">
                           <img 
-                            src={campaign.image} 
-                            alt={campaign.title}
+                            src={fundraiser.image} 
+                            alt={fundraiser.title}
                             className="w-full h-full object-cover"
                           />
                         </div>
                       )}
                       
-                      <p className="text-sm text-muted-foreground mb-4">{campaign.description}</p>
+                      <p className="text-sm text-muted-foreground mb-4">{fundraiser.description}</p>
                       
                       <div className="space-y-3">
                         {(() => {
-                          const progressData = getProgressData(campaign);
-                          const donationAmount = campaign.donationAmount || 0;
+                          const progressData = getProgressData(fundraiser);
+                          const donationAmount = fundraiser.donationAmount || 0;
                           
                           return (
                             <>
@@ -219,8 +219,8 @@ export default function Demo() {
                                 <span>Progress</span>
                                 <span>
                                   {progressData.showSplit 
-                                    ? `${formatSats(progressData.combinedTotal)} / ${formatSats(campaign.target)}`
-                                    : `${formatSats(campaign.currentAmount)} / ${formatSats(campaign.target)}`
+                                    ? `${formatSats(progressData.combinedTotal)} / ${formatSats(fundraiser.target)}`
+                                    : `${formatSats(fundraiser.currentAmount)} / ${formatSats(fundraiser.target)}`
                                   }
                                 </span>
                               </div>
@@ -240,7 +240,7 @@ export default function Demo() {
                               {/* Show breakdown when there are donations */}
                               {donationAmount > 0 && (
                                 <div className="flex justify-between text-xs text-muted-foreground">
-                                  <span>{formatSats(campaign.currentAmount)} tickets</span>
+                                  <span>{formatSats(fundraiser.currentAmount)} tickets</span>
                                   <span>{formatSats(donationAmount)} donations</span>
                                 </div>
                               )}
@@ -265,22 +265,22 @@ export default function Demo() {
                         <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm">
                           <div>
                             <p className="text-muted-foreground text-xs sm:text-sm">Tickets</p>
-                            <p className="font-semibold">{campaign.ticketsSold}</p>
+                            <p className="font-semibold">{fundraiser.ticketsSold}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground text-xs sm:text-sm">Participants</p>
-                            <p className="font-semibold">{campaign.participants}</p>
+                            <p className="font-semibold">{fundraiser.participants}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground text-xs sm:text-sm">Time Left</p>
-                            <p className="font-semibold text-xs sm:text-sm">{campaign.timeLeft}</p>
+                            <p className="font-semibold text-xs sm:text-sm">{fundraiser.timeLeft}</p>
                           </div>
                         </div>
                         
-                        {!campaign.isActive && campaign.winner && (
+                        {!fundraiser.isActive && fundraiser.winner && (
                           <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
                             <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                              🎉 Winner: {campaign.winner} won {formatSats(campaign.winnerAmount)}!
+                              🎉 Winner: {fundraiser.winner} won {formatSats(fundraiser.winnerAmount)}!
                             </p>
                           </div>
                         )}
@@ -291,16 +291,16 @@ export default function Demo() {
               </div>
             </div>
 
-            {/* Selected Campaign Details */}
+            {/* Selected Fundraiser Details */}
             <div className="space-y-4 sm:space-y-6">
               <Card className="lg:sticky lg:top-8">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Trophy className="h-5 w-5 mr-2" />
-                    Campaign Details
+                    Fundraiser Details
                   </CardTitle>
                   <CardDescription>
-                    {selectedCampaign.title}
+                    {selectedFundraiser.title}
                   </CardDescription>
                 </CardHeader>
                 
@@ -309,18 +309,18 @@ export default function Demo() {
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Potential Prize</span>
                       <span className="font-semibold text-green-600">
-                        {formatSats(Math.floor(selectedCampaign.currentAmount / 2))}
+                        {formatSats(Math.floor(selectedFundraiser.currentAmount / 2))}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Creator Share</span>
                       <span className="font-semibold">
-                        {formatSats(selectedCampaign.currentAmount - Math.floor(selectedCampaign.currentAmount / 2))}
+                        {formatSats(selectedFundraiser.currentAmount - Math.floor(selectedFundraiser.currentAmount / 2))}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Ticket Price</span>
-                      <span className="font-semibold">{formatSats(selectedCampaign.ticketPrice)}</span>
+                      <span className="font-semibold">{formatSats(selectedFundraiser.ticketPrice)}</span>
                     </div>
                   </div>
 
@@ -346,7 +346,7 @@ export default function Demo() {
 
                   <Separator />
 
-                  {selectedCampaign.isActive ? (
+                  {selectedFundraiser.isActive ? (
                     <div className="space-y-2">
                       <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600" disabled>
                         Buy Tickets (Demo Mode)
@@ -357,7 +357,7 @@ export default function Demo() {
                     </div>
                   ) : (
                     <div className="bg-muted p-3 rounded-lg text-center">
-                      <p className="text-sm font-medium">Campaign Ended</p>
+                      <p className="text-sm font-medium">Fundraiser Ended</p>
                       <p className="text-xs text-muted-foreground">
                         Winner selected randomly
                       </p>
@@ -374,7 +374,7 @@ export default function Demo() {
                 <CardContent className="space-y-3 text-xs">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>Real-time campaign updates</span>
+                    <span>Real-time fundraiser updates</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -397,7 +397,7 @@ export default function Demo() {
           <div className="text-center mt-8 sm:mt-16 p-6 sm:p-8 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900 rounded-2xl">
             <h3 className="text-xl sm:text-2xl font-bold mb-4">Ready to Get Started?</h3>
             <p className="text-sm sm:text-base text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Join the decentralized future of podcast fundraising. Create campaigns, buy tickets, 
+              Join the decentralized future of podcast fundraising. Create fundraisers, buy tickets, 
               and support your favorite creators while having a chance to win big!
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
