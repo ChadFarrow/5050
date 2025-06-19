@@ -27,36 +27,26 @@ export interface Fundraiser {
 export type Campaign = Fundraiser;
 
 function validateFundraiserEvent(event: NostrEvent): boolean {
-  if (event.kind !== 31950) {
-    console.log(`❌ Invalid kind: ${event.kind} for event ${event.id}`);
-    return false;
-  }
+  if (event.kind !== 31950) return false;
 
   const tags = new Map(event.tags.map(([name, value]) => [name, value]));
 
   // Check if this is a deleted fundraiser (empty content + deleted tag)
   if (!event.content && tags.has('deleted')) {
-    console.log(`❌ Deleted fundraiser: ${event.id}`);
     return false; // Skip deleted fundraisers
   }
 
   const requiredTags = ['d', 'title', 'description', 'target', 'ticket_price', 'end_date', 'podcast'];
 
   for (const tag of requiredTags) {
-    if (!tags.has(tag) || !tags.get(tag)) {
-      console.log(`❌ Missing required tag '${tag}' in event ${event.id}. Available tags:`, Array.from(tags.keys()));
-      return false;
-    }
+    if (!tags.has(tag) || !tags.get(tag)) return false;
   }
 
   // Validate numeric fields
   const ticketPrice = parseInt(tags.get('ticket_price') || '0');
   const endDate = parseInt(tags.get('end_date') || '0');
 
-  if (ticketPrice <= 0 || endDate <= 0) {
-    console.log(`❌ Invalid numeric values in event ${event.id}: ticketPrice=${ticketPrice}, endDate=${endDate}`);
-    return false;
-  }
+  if (ticketPrice <= 0 || endDate <= 0) return false;
 
   return true;
 }
