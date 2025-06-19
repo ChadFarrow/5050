@@ -41,7 +41,18 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
   const totalDonations = stats?.totalDonations || 0;
   const totalTickets = stats?.totalTickets || 0;
   const combinedTotal = totalRaised + totalDonations;
-  const progressPercent = fundraiser.target > 0 ? Math.min((combinedTotal / fundraiser.target) * 100, 100) : 0;
+  
+  // Calculate progress based on campaign type
+  let progressPercent: number;
+  if (fundraiser.target > 0) {
+    progressPercent = Math.min((combinedTotal / fundraiser.target) * 100, 100);
+  } else if (totalDonations > 0 && combinedTotal > 0) {
+    // Show ticket percentage when there are donations
+    progressPercent = (totalRaised / combinedTotal) * 100;
+  } else {
+    // Show 100% if there's any activity, 0% if none
+    progressPercent = combinedTotal > 0 ? 100 : 0;
+  }
 
   const potentialWinnings = Math.floor(combinedTotal / 2);
   
@@ -194,7 +205,7 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
                 }
               </span>
             </div>
-            {fundraiser.target > 0 && <Progress value={progressPercent} className="h-2" />}
+            <Progress value={progressPercent} className="h-2" />
             {totalDonations > 0 && (
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Tickets: {formatSats(totalRaised)}</span>

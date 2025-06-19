@@ -20,7 +20,22 @@ export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const totalRaised = stats?.totalRaised || 0;
-  const progress = campaign.target > 0 ? (totalRaised / campaign.target) * 100 : 0;
+  const totalDonations = stats?.totalDonations || 0;
+  const combinedTotal = totalRaised + totalDonations;
+  
+  // For campaigns with a target, show normal progress
+  // For campaigns without target, show 100% if there's activity, otherwise 0%
+  // If there are donations, show the percentage split of tickets vs donations
+  let progress: number;
+  if (campaign.target > 0) {
+    progress = (combinedTotal / campaign.target) * 100;
+  } else if (totalDonations > 0 && combinedTotal > 0) {
+    // Show ticket percentage when there are donations
+    progress = (totalRaised / combinedTotal) * 100;
+  } else {
+    // Show 100% if there's any activity, 0% if none
+    progress = combinedTotal > 0 ? 100 : 0;
+  }
   const endDate = new Date(campaign.endDate * 1000);
   const isExpired = Date.now() > campaign.endDate * 1000;
   const hasTickets = (stats?.totalTickets || 0) > 0;
@@ -75,20 +90,39 @@ export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Progress</span>
               <span className="text-sm text-muted-foreground">
-                {progress.toFixed(1)}%
+                {campaign.target > 0 
+                  ? `${progress.toFixed(1)}%`
+                  : totalDonations > 0 && combinedTotal > 0
+                    ? `${progress.toFixed(1)}% tickets`
+                    : combinedTotal > 0 
+                      ? 'Active'
+                      : 'Open-ended'
+                }
               </span>
             </div>
             <Progress value={progress} className="h-2" />
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>{formatSats(totalRaised)} raised</span>
-              <span>{formatSats(campaign.target)} goal</span>
+              <span>
+                {totalDonations > 0 && campaign.target === 0
+                  ? `${formatSats(totalRaised)} tickets`
+                  : `${formatSats(combinedTotal)} raised`
+                }
+              </span>
+              <span>
+                {campaign.target > 0 
+                  ? `${formatSats(campaign.target)} goal`
+                  : totalDonations > 0 
+                    ? `${formatSats(totalDonations)} donations`
+                    : 'No target'
+                }
+              </span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center space-y-1">
               <Target className="h-5 w-5 mx-auto text-muted-foreground" />
-              <div className="text-lg font-semibold">{formatSats(campaign.target)}</div>
+              <div className="text-lg font-semibold">{campaign.target > 0 ? formatSats(campaign.target) : 'Open'}</div>
               <div className="text-xs text-muted-foreground">Target</div>
             </div>
             
