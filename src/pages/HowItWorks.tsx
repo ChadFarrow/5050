@@ -134,7 +134,7 @@ const HowItWorks = () => {
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-4">
                 <li><strong>Buying Tickets:</strong> Purchase raffle tickets with Lightning payments</li>
                 <li><strong>Donating to Prize Pool:</strong> Make direct donations to increase the prize pool</li>
-                <li>Connecting their Lightning wallet (Alby, Mutiny, etc.)</li>
+                <li>Connecting their Lightning wallet (Alby, Coinos, etc.)</li>
                 <li>Paying instantly through the web interface</li>
               </ul>
               <p className="text-sm text-muted-foreground">

@@ -46,7 +46,7 @@ See `NIP.md` for complete event specifications.
 - Node.js 18+
 - A Nostr client/extension (like Alby, nos2x) for authentication
 - Lightning wallet for payments:
-  - **Recommended**: NIP-47 compatible wallet (Alby, Mutiny, etc.)
+  - **Recommended**: NIP-47 compatible wallet (Alby, Coinos, etc.)
   - **Alternative**: Lightning service API (LNbits, BTCPay Server, etc.)
 
 ### Installation
@@ -111,7 +111,7 @@ Default relays:
 
 ### Lightning Integration
 **Real Lightning Implementation** - The app now supports real Lightning payments through:
-- **NIP-47 (Nostr Wallet Connect)**: Connect any NWC-compatible wallet (Alby, Mutiny, etc.)
+- **NIP-47 (Nostr Wallet Connect)**: Connect any NWC-compatible wallet (Alby, Coinos, etc.)
 - **Traditional Lightning Services**: LNbits, BTCPay Server, LndHub, and custom APIs
 - **Real Invoices**: Generate actual Lightning invoices for ticket purchases
 - **Payment Verification**: Full payment confirmation and event publishing

@@ -22,7 +22,7 @@ The platform now supports **proper fundraising** where payments go directly to t
 ### 1. Get an NWC Connection
 Wallets that support Nostr Wallet Connect:
 - **Alby**: Go to Settings → Developer → Nostr Wallet Connect → Create Connection
-- **Mutiny**: In-app NWC connection generation
+- **Coinos**: Web-based Lightning wallet
 - **Cashu.me**: NWC support for ecash wallets
 - **LNbits**: Built-in NWC extension
 

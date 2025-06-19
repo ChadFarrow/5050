@@ -5,6 +5,7 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useWinnerNotification } from '@/hooks/useWinnerNotification';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatSats } from '@/lib/utils';
+import { announceWinner } from '@/lib/nostr-bot-serverless';
 import type { Fundraiser } from '@/hooks/useCampaigns';
 import type { CampaignStats, TicketPurchase } from '@/hooks/useCampaignStats';
 
@@ -220,6 +221,24 @@ export function useAutoWinnerSelection() {
             } catch (notificationError) {
               console.error(`Failed to send winner notification for fundraiser ${fundraiser.id}:`, notificationError);
               // Don't fail the whole process if notification fails
+            }
+            
+            // Announce winner on Nostr (bot posting)
+            try {
+              const creatorName = fundraiser.podcast || 'Anonymous';
+              const winnerName = 'Winner'; // We don't have winner's display name easily available
+              await announceWinner({
+                title: fundraiser.title,
+                creator: creatorName,
+                winner: winnerName,
+                prizeAmount: winnerAmount,
+                totalRaised,
+                url: window.location.origin, // You can make this more specific
+              });
+              console.log('Bot winner announcement posted');
+            } catch (botError) {
+              console.warn('Failed to post bot winner announcement:', botError);
+              // Don't fail the whole process if bot posting fails
             }
             
             // Invalidate queries to refresh the UI

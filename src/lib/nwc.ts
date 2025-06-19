@@ -275,7 +275,6 @@ export async function detectWalletNWC(): Promise<string | null> {
     console.log('🔍 Window keys containing wallet-related terms:', 
       Object.keys(window).filter(key => 
         key.toLowerCase().includes('alby') || 
-        key.toLowerCase().includes('mutiny') || 
         key.toLowerCase().includes('nwc') ||
         key.toLowerCase().includes('wallet') ||
         key.toLowerCase().includes('bitcoin') ||
@@ -319,7 +318,6 @@ export async function detectWalletNWC(): Promise<string | null> {
     // Check for specific wallet browser extensions
     console.log('🔍 Detailed wallet extension check:');
     console.log('  - Alby extension:', 'alby' in window);
-    console.log('  - Mutiny extension:', 'mutiny' in window);
     console.log('  - Generic webln:', !!window.webln);
     console.log('  - Bitcoin Connect:', 'bitcoinConnect' in window);
     
@@ -496,25 +494,6 @@ export async function detectWalletNWC(): Promise<string | null> {
           }
         } catch (error) {
           console.log('⚠️ Failed to get Bitcoin Connect provider:', error);
-        }
-      }
-    }
-    
-    // Method 3: Check for Mutiny wallet
-    if ('mutiny' in window) {
-      console.log('⚡ Mutiny wallet detected, checking for NWC...');
-      const mutiny = (window as { mutiny: Record<string, unknown> }).mutiny;
-      console.log('🔧 Mutiny methods:', Object.keys(mutiny));
-      
-      if (typeof mutiny.getNWCConnection === 'function') {
-        try {
-          const nwcConnection = await (mutiny.getNWCConnection as () => Promise<string>)();
-          if (nwcConnection && nwcConnection.startsWith('nostr+walletconnect://')) {
-            console.log('✅ Found NWC connection from Mutiny wallet');
-            return nwcConnection;
-          }
-        } catch (error) {
-          console.log('⚠️ Failed to get Mutiny NWC:', error);
         }
       }
     }

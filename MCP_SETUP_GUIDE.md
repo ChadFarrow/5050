@@ -70,12 +70,11 @@ NWC_CONNECTION_STRING="your_nwc_connection_string" npx @getalby/nwc-mcp-server -
 4. Generate a new connection with `make_invoice` permission
 5. Copy the connection string starting with `nostr+walletconnect://`
 
-### Mutiny Wallet
-1. Open [Mutiny Wallet](https://mutinywallet.com)
-2. Go to Settings → Nostr Wallet Connect
-3. Create a new connection
-4. Enable invoice creation permissions
-5. Copy the connection string
+### Coinos Wallet
+1. Open [Coinos](https://coinos.io)
+2. Create or access your wallet
+3. Set up Lightning payment methods
+4. For NWC support, check wallet settings
 
 ### Other Compatible Wallets
 - Umbrel
@@ -198,7 +197,7 @@ curl -X POST http://localhost:3000 \
 - [NWC MCP Server GitHub](https://github.com/getAlby/nwc-mcp-server)
 - [NWC Protocol Documentation](https://nwc.dev)
 - [Alby Wallet](https://getalby.com)
-- [Mutiny Wallet](https://mutinywallet.com)
+- [Coinos Wallet](https://coinos.io)
 
 ## Support
 

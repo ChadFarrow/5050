@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@/hooks/useWallet';
+import { announceFundraiserCreated } from '@/lib/nostr-bot-serverless';
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -234,13 +235,38 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
         content: form.content.trim(),
         tags,
       }, {
-        onSuccess: (eventId) => {
+        onSuccess: async (eventId) => {
           console.log('Fundraiser created:', eventId);
           toast({
             title: "Success",
             description: "Fundraiser created successfully",
           });
           queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
+          
+          // Announce new fundraiser on Nostr (bot posting)
+          try {
+            // Get creator name from user metadata
+            const creatorName = user?.metadata?.name || 
+                               user?.metadata?.display_name || 
+                               user?.metadata?.displayName ||
+                               form.podcast.trim() || 
+                               'Podcaster';
+            
+            await announceFundraiserCreated({
+              title: form.title.trim(),
+              creator: creatorName,
+              amount: form.target > 0 ? parseInt(form.target) : undefined,
+              endDate: endTimestamp,
+              ticketPrice: Math.floor(ticketPriceMillisats / 1000), // Convert to sats
+              description: form.content.trim(),
+              url: window.location.origin, // You can make this more specific
+            });
+            console.log('Bot announcement posted for new fundraiser');
+          } catch (error) {
+            console.warn('Failed to post bot announcement:', error);
+            // Don't fail the whole process if bot posting fails
+          }
+          
           onOpenChange(false);
         },
         onError: (error) => {

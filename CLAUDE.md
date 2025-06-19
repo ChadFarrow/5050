@@ -55,7 +55,7 @@ The project uses Bitcoin Connect for a modern, user-friendly Lightning wallet co
 - **`useBitcoinConnect` Hook**: React hook for WebLN provider integration  
 - **`useWallet` Hook**: Simplified interface using Bitcoin Connect
 - **Web Components**: Native `<bc-button>` component for easy wallet selection
-- **Multi-Wallet Support**: Alby, Mutiny, LNC, and other WebLN-compatible wallets
+- **Multi-Wallet Support**: Alby, Coinos, LNC, and other WebLN-compatible wallets
 
 ### Core Features
 - **Components**: `LightningInvoice` and `LightningConfig` provide complete wallet management UI
