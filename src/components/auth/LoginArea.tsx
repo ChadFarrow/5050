@@ -8,6 +8,7 @@ import LoginDialog from './LoginDialog';
 import SignupDialog from './SignupDialog';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { AccountSwitcher } from './AccountSwitcher';
+import { useLoginDialog } from '@/contexts/LoginContext';
 import { cn } from '@/lib/utils';
 
 export interface LoginAreaProps {
@@ -16,11 +17,11 @@ export interface LoginAreaProps {
 
 export function LoginArea({ className }: LoginAreaProps) {
   const { currentUser } = useLoggedInAccounts();
-  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const { isLoginDialogOpen, openLoginDialog, closeLoginDialog } = useLoginDialog();
   const [signupDialogOpen, setSignupDialogOpen] = useState(false);
 
   const handleLogin = () => {
-    setLoginDialogOpen(false);
+    closeLoginDialog();
     setSignupDialogOpen(false);
   };
 
@@ -30,7 +31,7 @@ export function LoginArea({ className }: LoginAreaProps) {
         <AccountSwitcher />
       ) : (
         <Button
-          onClick={() => setLoginDialogOpen(true)}
+          onClick={openLoginDialog}
           className='flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground w-full font-medium transition-all hover:bg-primary/90 animate-scale-in'
         >
           <User className='w-4 h-4' />
@@ -39,8 +40,8 @@ export function LoginArea({ className }: LoginAreaProps) {
       )}
 
       <LoginDialog
-        isOpen={loginDialogOpen} 
-        onClose={() => setLoginDialogOpen(false)} 
+        isOpen={isLoginDialogOpen} 
+        onClose={closeLoginDialog} 
         onLogin={handleLogin}
         onSignup={() => setSignupDialogOpen(true)}
       />

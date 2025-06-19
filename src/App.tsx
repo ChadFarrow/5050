@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
+import { LoginProvider } from '@/contexts/LoginContext';
 import AppRouter from './AppRouter';
 
 const queryClient = new QueryClient({
@@ -40,13 +41,15 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <NostrLoginProvider storageKey='nostr:login'>
           <NostrProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <Suspense>
-                <AppRouter />
-              </Suspense>
-            </TooltipProvider>
+            <LoginProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <Suspense>
+                  <AppRouter />
+                </Suspense>
+              </TooltipProvider>
+            </LoginProvider>
           </NostrProvider>
         </NostrLoginProvider>
       </QueryClientProvider>

@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthor } from "@/hooks/useAuthor";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
+import { useLoginDialog } from "@/contexts/LoginContext";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
 import { DonateDialog } from "@/components/DonateDialog";
 import { DeleteFundraiserDialog } from "@/components/DeleteFundraiserDialog";
@@ -25,6 +26,7 @@ interface FundraiserCardProps {
 
 export function CampaignCard({ fundraiser }: FundraiserCardProps) {
   const { user } = useCurrentUser();
+  const { openLoginDialog } = useLoginDialog();
   const author = useAuthor(fundraiser.pubkey);
   const { data: stats } = useCampaignStats(fundraiser.pubkey, fundraiser.dTag);
   const [showBuyDialog, setShowBuyDialog] = useState(false);
@@ -321,12 +323,22 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
               </div>
             ) : !user ? (
               <div className="space-y-2">
-                <Button variant="outline" className="w-full text-sm" size="sm" disabled>
+                <Button 
+                  variant="outline" 
+                  className="w-full text-sm" 
+                  size="sm"
+                  onClick={openLoginDialog}
+                >
                   <span className="hidden sm:inline">Login to Buy Tickets</span>
                   <span className="sm:hidden">Login to Buy</span>
                 </Button>
                 <div className="flex gap-1">
-                  <Button variant="outline" className="flex-1 text-sm" size="sm" disabled>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 text-sm" 
+                    size="sm"
+                    onClick={openLoginDialog}
+                  >
                     <span className="hidden sm:inline">Login to Donate</span>
                     <span className="sm:hidden">Login</span>
                   </Button>
