@@ -11,24 +11,27 @@ const HowItWorks = () => {
       {/* Header */}
       <header className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Home
+                  <span className="hidden sm:inline">Back to Home</span>
+                  <span className="sm:hidden">Back</span>
                 </Link>
               </Button>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 rounded-lg">
-                  <Trophy className="h-5 w-5 text-white" />
-                </div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+                <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent truncate">
                   PodRaffle
                 </h1>
               </div>
+            </div>
+            <div className="flex-shrink-0">
               <ThemeToggle />
             </div>
           </div>

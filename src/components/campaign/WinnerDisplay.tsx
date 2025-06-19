@@ -15,7 +15,7 @@ interface WinnerDisplayProps {
 
 export function WinnerDisplay({ result, campaignPubkey, campaignDTag }: WinnerDisplayProps) {
   const { displayName, profileImage } = useAuthorDisplay(result.winnerPubkey);
-  const { data: prizeClaims, isLoading, error } = usePrizeClaims(campaignPubkey, campaignDTag);
+  const { data: prizeClaims, isLoading } = usePrizeClaims(campaignPubkey, campaignDTag);
   const toast = useToastUtils();
   const resultDate = new Date(result.createdAt * 1000);
   

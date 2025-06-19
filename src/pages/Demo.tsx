@@ -77,28 +77,32 @@ export default function Demo() {
       {/* Header */}
       <header className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <Button variant="ghost" asChild size="sm">
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Back to App</span>
-                <span className="sm:hidden">Back</span>
-              </Link>
-            </Button>
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex-shrink-0">
+              <Button variant="ghost" asChild size="sm">
+                <Link to="/">
+                  <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Back to App</span>
+                  <span className="sm:hidden">Back</span>
+                </Link>
+              </Button>
+            </div>
             
-            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1 justify-center">
               <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
                 <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent truncate">
+                <h1 className="text-base sm:text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent truncate">
                   PodRaffle Demo
                 </h1>
                 <p className="text-xs text-muted-foreground hidden sm:block">Interactive Preview</p>
               </div>
             </div>
             
-            <ThemeToggle />
+            <div className="flex-shrink-0">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>

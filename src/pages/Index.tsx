@@ -79,9 +79,9 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Header */}
       <header className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+        <div className="container mx-auto px-4 py-4 space-y-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
               <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
                 <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
@@ -93,15 +93,12 @@ const Index = () => {
               </div>
             </div>
             
-            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
               <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
                 <Link to="/how-it-works">How It Works</Link>
               </Button>
               <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
                 <Link to="/demo">View Demo</Link>
-              </Button>
-              <Button variant="outline" size="sm" className="sm:hidden" asChild>
-                <Link to="/demo">Demo</Link>
               </Button>
               <Button 
                 variant="outline" 
@@ -121,10 +118,19 @@ const Index = () => {
                 <Heart className="h-4 w-4" />
               </Button>
               <ThemeToggle />
-              <LoginArea className="max-w-32 sm:max-w-60" />
+              <LoginArea className="max-w-28 sm:max-w-32 md:max-w-60" />
             </div>
           </div>
           
+          {/* Navigation Row - Mobile Only */}
+          <div className="flex items-center justify-center gap-2 sm:hidden">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/how-it-works">How It Works</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/demo">Demo</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
