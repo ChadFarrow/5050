@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { SplitProgress } from "@/components/ui/split-progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
@@ -19,7 +20,8 @@ const mockCampaigns = [
     description: "Help us upgrade our recording equipment and keep bringing you the latest tech news!",
     target: 500000, // 500 sats
     ticketPrice: 10000, // 10 sats
-    currentAmount: 350000, // 350 sats
+    currentAmount: 350000, // 350 sats from tickets
+    donationAmount: 100000, // 100 sats from donations
     ticketsSold: 35,
     participants: 12,
     timeLeft: "2 days",
@@ -34,7 +36,8 @@ const mockCampaigns = [
     description: "Support independent artists and help us discover the next big thing in music!",
     target: 1000000, // 1000 sats
     ticketPrice: 25000, // 25 sats
-    currentAmount: 750000, // 750 sats
+    currentAmount: 750000, // 750 sats from tickets
+    donationAmount: 50000, // 50 sats from donations  
     ticketsSold: 30,
     participants: 18,
     timeLeft: "5 hours",
@@ -49,7 +52,8 @@ const mockCampaigns = [
     description: "Help us book better guests and maybe get some decent coffee for the studio!",
     target: 300000, // 300 sats
     ticketPrice: 5000, // 5 sats
-    currentAmount: 300000, // 300 sats (completed)
+    currentAmount: 300000, // 300 sats from tickets (completed)
+    donationAmount: 0, // no donations
     ticketsSold: 60,
     participants: 25,
     timeLeft: "Ended",
@@ -68,8 +72,46 @@ export default function Demo() {
     return `${sats.toLocaleString()} sats`;
   };
 
-  const getProgressPercent = (current: number, target: number) => {
-    return Math.min((current / target) * 100, 100);
+  const getProgressData = (campaign: {
+    currentAmount: number;
+    donationAmount?: number;
+    target: number;
+  }) => {
+    const totalRaised = campaign.currentAmount;
+    const totalDonations = campaign.donationAmount || 0;
+    const combinedTotal = totalRaised + totalDonations;
+    
+    if (campaign.target > 0) {
+      // Campaign with goal
+      const totalProgressPercent = Math.min((combinedTotal / campaign.target) * 100, 100);
+      const ticketProgressPercent = Math.min((totalRaised / campaign.target) * 100, 100);
+      const donationProgressPercent = Math.min((totalDonations / campaign.target) * 100, 100);
+      
+      if (totalDonations > 0 && totalRaised > 0) {
+        // Show split progress when both tickets and donations exist
+        return {
+          showSplit: true,
+          ticketProgress: ticketProgressPercent,
+          donationProgress: donationProgressPercent,
+          totalProgress: totalProgressPercent,
+          combinedTotal
+        };
+      } else {
+        // Single progress bar
+        return {
+          showSplit: false,
+          totalProgress: totalProgressPercent,
+          combinedTotal
+        };
+      }
+    } else {
+      // Open-ended campaign logic (if needed)
+      return {
+        showSplit: false,
+        totalProgress: combinedTotal > 0 ? 100 : 0,
+        combinedTotal
+      };
+    }
   };
 
   return (
@@ -167,11 +209,58 @@ export default function Demo() {
                       <p className="text-sm text-muted-foreground mb-4">{campaign.description}</p>
                       
                       <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Progress</span>
-                          <span>{formatSats(campaign.currentAmount)} / {formatSats(campaign.target)}</span>
-                        </div>
-                        <Progress value={getProgressPercent(campaign.currentAmount, campaign.target)} />
+                        {(() => {
+                          const progressData = getProgressData(campaign);
+                          const donationAmount = campaign.donationAmount || 0;
+                          
+                          return (
+                            <>
+                              <div className="flex justify-between text-sm">
+                                <span>Progress</span>
+                                <span>
+                                  {progressData.showSplit 
+                                    ? `${formatSats(progressData.combinedTotal)} / ${formatSats(campaign.target)}`
+                                    : `${formatSats(campaign.currentAmount)} / ${formatSats(campaign.target)}`
+                                  }
+                                </span>
+                              </div>
+                              
+                              {/* Progress Bar - Split or Single */}
+                              {progressData.showSplit ? (
+                                <SplitProgress 
+                                  ticketValue={progressData.ticketProgress || 0}
+                                  donationValue={progressData.donationProgress || 0}
+                                  totalValue={progressData.totalProgress}
+                                  className="h-2"
+                                />
+                              ) : (
+                                <Progress value={progressData.totalProgress} className="h-2" />
+                              )}
+                              
+                              {/* Show breakdown when there are donations */}
+                              {donationAmount > 0 && (
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                  <span>{formatSats(campaign.currentAmount)} tickets</span>
+                                  <span>{formatSats(donationAmount)} donations</span>
+                                </div>
+                              )}
+                              
+                              {/* Legend for split progress */}
+                              {progressData.showSplit && (
+                                <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                                    <span>Tickets</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                    <span>Donations</span>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                         
                         <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm">
                           <div>

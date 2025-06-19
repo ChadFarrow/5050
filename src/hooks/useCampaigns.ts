@@ -151,36 +151,18 @@ export function useFundraisers() {
   return useQuery({
     queryKey: ['fundraisers'],
     queryFn: async (c) => {
-      console.log('🚀 useFundraisers queryFn called');
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
       
-      console.log('🔍 Querying for fundraiser events (kind 31950)...');
-      let events;
-      try {
-        events = await nostr.query(
-          [{ kinds: [31950], limit: 50 }],
-          { signal }
-        );
-        console.log(`📥 Found ${events.length} raw events from relay`);
-      } catch (error) {
-        console.error('❌ Error querying relay:', error);
-        console.log('🔄 This might indicate a relay connection issue or timeout');
-        events = [];
-      }
-      
+      const events = await nostr.query(
+        [{ kinds: [31950], limit: 50 }],
+        { signal }
+      );
+
       // Filter and transform events
       const validEvents = events.filter(validateFundraiserEvent);
-      console.log(`✅ ${validEvents.length} valid events after filtering`);
-      
-      if (events.length > 0 && validEvents.length === 0) {
-        console.log('⚠️ All events were filtered out. Sample invalid event:', events[0]);
-      }
-      
       const fundraisers = await Promise.all(
         validEvents.map(event => eventToFundraiser(event, nostr))
       );
-
-      console.log(`🎯 Final result: ${fundraisers.length} fundraisers`);
 
       // Sort by creation date, newest first
       return fundraisers.sort((a, b) => b.createdAt - a.createdAt);

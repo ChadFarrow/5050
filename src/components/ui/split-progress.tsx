@@ -32,18 +32,18 @@ const SplitProgress = React.forwardRef<
         className
       )}
     >
-      {/* Ticket portion (orange) */}
+      {/* Ticket portion (purple) */}
       {ticketProportion > 0 && (
         <div
-          className="absolute top-0 left-0 h-full bg-orange-500 transition-all"
+          className="absolute top-0 left-0 h-full bg-purple-500 transition-all"
           style={{ width: `${ticketProportion}%` }}
         />
       )}
       
-      {/* Donation portion (red) */}
+      {/* Donation portion (blue) */}
       {donationProportion > 0 && (
         <div
-          className="absolute top-0 h-full bg-red-500 transition-all"
+          className="absolute top-0 h-full bg-blue-500 transition-all"
           style={{ 
             left: `${ticketProportion}%`,
             width: `${donationProportion}%` 
