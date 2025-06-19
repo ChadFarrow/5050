@@ -112,7 +112,7 @@ export function ClaimPrizeCard({ campaign, result }: ClaimPrizeCardProps) {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success("Copied!", "Campaign link copied to clipboard");
+    toast.success("Copied!", "Fundraiser link copied to clipboard");
   };
 
   const campaignUrl = createCampaignUrl(campaign);
@@ -145,7 +145,7 @@ export function ClaimPrizeCard({ campaign, result }: ClaimPrizeCardProps) {
           <Trophy className="h-4 w-4" />
           <AlertDescription>
             To claim your prize, choose your preferred payment method and enter your payment information. 
-            The campaign creator will be notified and send your winnings directly.
+            The fundraiser creator will be notified and send your winnings directly.
           </AlertDescription>
         </Alert>
 

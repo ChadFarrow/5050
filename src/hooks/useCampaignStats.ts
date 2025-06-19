@@ -2,17 +2,17 @@ import { useQuery } from '@tanstack/react-query';
 import { useNostr } from '@nostrify/react';
 import type { NostrEvent } from '@nostrify/nostrify';
 
-export interface CampaignStats {
+export interface FundraiserStats {
   totalRaised: number; // millisats from tickets
   totalDonations: number; // millisats from direct donations
   totalTickets: number;
   uniqueParticipants: number;
   purchases: TicketPurchase[];
   donations: Donation[];
-  result?: CampaignResult;
+  result?: FundraiserResult;
 }
 
-export interface CampaignResult {
+export interface FundraiserResult {
   id: string;
   pubkey: string;
   dTag: string;
@@ -141,7 +141,7 @@ function eventToDonation(event: NostrEvent): Donation {
   };
 }
 
-function validateCampaignResult(event: NostrEvent): boolean {
+function validateFundraiserResult(event: NostrEvent): boolean {
   if (event.kind !== 31952) return false;
 
   const tags = new Map(event.tags.map(([name, value]) => [name, value]));
@@ -163,7 +163,7 @@ function validateCampaignResult(event: NostrEvent): boolean {
   return true;
 }
 
-function eventToCampaignResult(event: NostrEvent): CampaignResult {
+function eventToFundraiserResult(event: NostrEvent): FundraiserResult {
   const tags = new Map(event.tags.map(([name, value]) => [name, value]));
 
   return {
@@ -226,7 +226,7 @@ export function storePendingPurchase(campaignPubkey: string, campaignDTag: strin
   }
 }
 
-export function useCampaignStats(pubkey: string, dTag: string) {
+export function useFundraiserStats(pubkey: string, dTag: string) {
   const { nostr } = useNostr();
 
   return useQuery({
@@ -370,13 +370,13 @@ export function useCampaignStats(pubkey: string, dTag: string) {
       });
 
       // Check for campaign result
-      let result: CampaignResult | undefined;
-      const resultEvent = resultEvents.find(validateCampaignResult);
+      let result: FundraiserResult | undefined;
+      const resultEvent = resultEvents.find(validateFundraiserResult);
       if (resultEvent) {
-        result = eventToCampaignResult(resultEvent);
+        result = eventToFundraiserResult(resultEvent);
       }
 
-      const stats: CampaignStats = {
+      const stats: FundraiserStats = {
         totalRaised,
         totalDonations,
         totalTickets,
@@ -393,6 +393,11 @@ export function useCampaignStats(pubkey: string, dTag: string) {
     refetchInterval: 30000, // 30 seconds
   });
 }
+
+// Backward compatibility aliases
+export const useCampaignStats = useFundraiserStats;
+export type CampaignStats = FundraiserStats;
+export type CampaignResult = FundraiserResult;
 
 export function useUserTickets(fundraiserPubkey: string, fundraiserDTag: string, userPubkey?: string) {
   const { nostr } = useNostr();

@@ -60,7 +60,7 @@ const initialForm: FundraiserForm = {
   nwcConnection: "",
 };
 
-export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
+export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const queryClient = useQueryClient();
@@ -604,3 +604,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateFundraiserDia
     </Dialog>
   );
 }
+
+// Backward compatibility alias
+export const CreateCampaignDialog = CreateFundraiserDialog;

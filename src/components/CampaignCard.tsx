@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { SplitProgress } from "@/components/ui/split-progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthor } from "@/hooks/useAuthor";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -44,14 +45,40 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
   
   // Calculate progress based on campaign type
   let progressPercent: number;
+  let ticketProgress: number = 0;
+  let donationProgress: number = 0;
+  let showSplitProgress: boolean = false;
+  
   if (fundraiser.target > 0) {
-    progressPercent = Math.min((combinedTotal / fundraiser.target) * 100, 100);
-  } else if (totalDonations > 0 && combinedTotal > 0) {
-    // Show ticket percentage when there are donations
-    progressPercent = (totalRaised / combinedTotal) * 100;
+    const totalProgressPercent = Math.min((combinedTotal / fundraiser.target) * 100, 100);
+    const ticketProgressPercent = Math.min((totalRaised / fundraiser.target) * 100, 100);
+    const donationProgressPercent = Math.min((totalDonations / fundraiser.target) * 100, 100);
+    
+    if (totalDonations > 0 && totalRaised > 0) {
+      // Show split progress when both tickets and donations exist
+      showSplitProgress = true;
+      ticketProgress = ticketProgressPercent;
+      donationProgress = donationProgressPercent;
+      progressPercent = totalProgressPercent;
+    } else {
+      // Single progress bar
+      progressPercent = totalProgressPercent;
+    }
   } else {
-    // Show 100% if there's any activity, 0% if none
-    progressPercent = combinedTotal > 0 ? 100 : 0;
+    // Open-ended campaign
+    if (totalDonations > 0 && totalRaised > 0) {
+      // Show split progress when both tickets and donations exist
+      showSplitProgress = true;
+      ticketProgress = (totalRaised / combinedTotal) * 100;
+      donationProgress = (totalDonations / combinedTotal) * 100;
+      progressPercent = 100; // Always 100% for open-ended with activity
+    } else if (totalDonations > 0 && combinedTotal > 0) {
+      // Only donations - show ticket percentage (will be 0)
+      progressPercent = (totalRaised / combinedTotal) * 100;
+    } else {
+      // Show 100% if there's any activity, 0% if none
+      progressPercent = combinedTotal > 0 ? 100 : 0;
+    }
   }
 
   const potentialWinnings = Math.floor(combinedTotal / 2);
@@ -205,7 +232,16 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
                 }
               </span>
             </div>
-            <Progress value={progressPercent} className="h-2" />
+            {showSplitProgress ? (
+              <SplitProgress 
+                ticketValue={ticketProgress}
+                donationValue={donationProgress}
+                totalValue={progressPercent}
+                className="h-2"
+              />
+            ) : (
+              <Progress value={progressPercent} className="h-2" />
+            )}
             {totalDonations > 0 && (
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Tickets: {formatSats(totalRaised)}</span>

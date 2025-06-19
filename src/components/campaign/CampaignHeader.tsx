@@ -3,6 +3,7 @@ import { Calendar, Target, Ticket, Users, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { SplitProgress } from "@/components/ui/split-progress";
 import { Button } from "@/components/ui/button";
 import { formatSats } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -23,18 +24,43 @@ export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {
   const totalDonations = stats?.totalDonations || 0;
   const combinedTotal = totalRaised + totalDonations;
   
-  // For campaigns with a target, show normal progress
-  // For campaigns without target, show 100% if there's activity, otherwise 0%
-  // If there are donations, show the percentage split of tickets vs donations
+  // Calculate progress values for different scenarios
   let progress: number;
+  let ticketProgress: number = 0;
+  let donationProgress: number = 0;
+  let showSplitProgress: boolean = false;
+  
   if (campaign.target > 0) {
-    progress = (combinedTotal / campaign.target) * 100;
-  } else if (totalDonations > 0 && combinedTotal > 0) {
-    // Show ticket percentage when there are donations
-    progress = (totalRaised / combinedTotal) * 100;
+    // Fundraiser with goal
+    const totalProgressPercent = Math.min((combinedTotal / campaign.target) * 100, 100);
+    const ticketProgressPercent = Math.min((totalRaised / campaign.target) * 100, 100);
+    const donationProgressPercent = Math.min((totalDonations / campaign.target) * 100, 100);
+    
+    if (totalDonations > 0 && totalRaised > 0) {
+      // Show split progress when both tickets and donations exist
+      showSplitProgress = true;
+      ticketProgress = ticketProgressPercent;
+      donationProgress = donationProgressPercent;
+      progress = totalProgressPercent;
+    } else {
+      // Single progress bar
+      progress = totalProgressPercent;
+    }
   } else {
-    // Show 100% if there's any activity, 0% if none
-    progress = combinedTotal > 0 ? 100 : 0;
+    // Open-ended fundraiser
+    if (totalDonations > 0 && totalRaised > 0) {
+      // Show split progress when both tickets and donations exist
+      showSplitProgress = true;
+      ticketProgress = (totalRaised / combinedTotal) * 100;
+      donationProgress = (totalDonations / combinedTotal) * 100;
+      progress = 100; // Always 100% for open-ended with activity
+    } else if (totalDonations > 0 && combinedTotal > 0) {
+      // Only donations - show ticket percentage (will be 0)
+      progress = (totalRaised / combinedTotal) * 100;
+    } else {
+      // Show 100% if there's any activity, 0% if none
+      progress = combinedTotal > 0 ? 100 : 0;
+    }
   }
   const endDate = new Date(campaign.endDate * 1000);
   const isExpired = Date.now() > campaign.endDate * 1000;
@@ -100,23 +126,53 @@ export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {
                 }
               </span>
             </div>
-            <Progress value={progress} className="h-2" />
+            
+            {/* Progress Bar - Split or Single */}
+            {showSplitProgress ? (
+              <SplitProgress 
+                ticketValue={ticketProgress}
+                donationValue={donationProgress}
+                totalValue={progress}
+                className="h-2"
+              />
+            ) : (
+              <Progress value={progress} className="h-2" />
+            )}
+            
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>
-                {totalDonations > 0 && campaign.target === 0
+                {showSplitProgress
                   ? `${formatSats(totalRaised)} tickets`
-                  : `${formatSats(combinedTotal)} raised`
+                  : totalDonations > 0 && campaign.target === 0
+                    ? `${formatSats(totalRaised)} tickets`
+                    : `${formatSats(combinedTotal)} raised`
                 }
               </span>
               <span>
-                {campaign.target > 0 
-                  ? `${formatSats(campaign.target)} goal`
-                  : totalDonations > 0 
-                    ? `${formatSats(totalDonations)} donations`
-                    : 'No target'
+                {showSplitProgress
+                  ? `${formatSats(totalDonations)} donations`
+                  : campaign.target > 0 
+                    ? `${formatSats(campaign.target)} goal`
+                    : totalDonations > 0 
+                      ? `${formatSats(totalDonations)} donations`
+                      : 'No target'
                 }
               </span>
             </div>
+            
+            {/* Legend for split progress */}
+            {showSplitProgress && (
+              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                  <span>Tickets</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                  <span>Donations</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -156,3 +212,4 @@ export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {
     </Card>
   );
 }
+

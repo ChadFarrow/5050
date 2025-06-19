@@ -148,7 +148,7 @@ export function CampaignSidebar({ campaign, stats }: CampaignSidebarProps) {
           </Card>
         )}
 
-        {/* Campaign Details */}
+        {/* Fundraiser Details */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">

@@ -27,26 +27,36 @@ export interface Fundraiser {
 export type Campaign = Fundraiser;
 
 function validateFundraiserEvent(event: NostrEvent): boolean {
-  if (event.kind !== 31950) return false;
+  if (event.kind !== 31950) {
+    console.log(`❌ Invalid kind: ${event.kind} for event ${event.id}`);
+    return false;
+  }
 
   const tags = new Map(event.tags.map(([name, value]) => [name, value]));
 
   // Check if this is a deleted fundraiser (empty content + deleted tag)
   if (!event.content && tags.has('deleted')) {
+    console.log(`❌ Deleted fundraiser: ${event.id}`);
     return false; // Skip deleted fundraisers
   }
 
   const requiredTags = ['d', 'title', 'description', 'target', 'ticket_price', 'end_date', 'podcast'];
 
   for (const tag of requiredTags) {
-    if (!tags.has(tag) || !tags.get(tag)) return false;
+    if (!tags.has(tag) || !tags.get(tag)) {
+      console.log(`❌ Missing required tag '${tag}' in event ${event.id}. Available tags:`, Array.from(tags.keys()));
+      return false;
+    }
   }
 
   // Validate numeric fields
   const ticketPrice = parseInt(tags.get('ticket_price') || '0');
   const endDate = parseInt(tags.get('end_date') || '0');
 
-  if (ticketPrice <= 0 || endDate <= 0) return false;
+  if (ticketPrice <= 0 || endDate <= 0) {
+    console.log(`❌ Invalid numeric values in event ${event.id}: ticketPrice=${ticketPrice}, endDate=${endDate}`);
+    return false;
+  }
 
   return true;
 }
@@ -141,18 +151,36 @@ export function useFundraisers() {
   return useQuery({
     queryKey: ['fundraisers'],
     queryFn: async (c) => {
+      console.log('🚀 useFundraisers queryFn called');
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
       
-      const events = await nostr.query(
-        [{ kinds: [31950], limit: 50 }],
-        { signal }
-      );
-
+      console.log('🔍 Querying for fundraiser events (kind 31950)...');
+      let events;
+      try {
+        events = await nostr.query(
+          [{ kinds: [31950], limit: 50 }],
+          { signal }
+        );
+        console.log(`📥 Found ${events.length} raw events from relay`);
+      } catch (error) {
+        console.error('❌ Error querying relay:', error);
+        console.log('🔄 This might indicate a relay connection issue or timeout');
+        events = [];
+      }
+      
       // Filter and transform events
       const validEvents = events.filter(validateFundraiserEvent);
+      console.log(`✅ ${validEvents.length} valid events after filtering`);
+      
+      if (events.length > 0 && validEvents.length === 0) {
+        console.log('⚠️ All events were filtered out. Sample invalid event:', events[0]);
+      }
+      
       const fundraisers = await Promise.all(
         validEvents.map(event => eventToFundraiser(event, nostr))
       );
+
+      console.log(`🎯 Final result: ${fundraisers.length} fundraisers`);
 
       // Sort by creation date, newest first
       return fundraisers.sort((a, b) => b.createdAt - a.createdAt);

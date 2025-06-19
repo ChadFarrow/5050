@@ -60,7 +60,7 @@ export default function Campaign() {
           <Button variant="ghost" asChild>
             <a href="/" className="flex items-center">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Campaigns
+              Back to Fundraisers
             </a>
           </Button>
           <ThemeToggle />

@@ -11,7 +11,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useFundraisers } from "@/hooks/useCampaigns";
 import { useAutoWinnerSelection } from "@/hooks/useAutoWinnerSelection";
 import { CampaignCard } from "@/components/CampaignCard";
-import { CreateCampaignDialog } from "@/components/CreateCampaignDialog";
+import { CreateFundraiserDialog } from "@/components/CreateCampaignDialog";
 import { DonateToCreatorDialog } from "@/components/DonateToCreatorDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -160,7 +160,7 @@ const Index = () => {
       </section>
 
 
-      {/* Campaigns Section */}
+      {/* Fundraisers Section */}
       <section className="py-8 sm:py-12 px-4">
         <div className="container mx-auto max-w-6xl">
           <Tabs defaultValue="active" className="w-full">
@@ -305,8 +305,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Create Campaign Dialog */}
-      <CreateCampaignDialog 
+      {/* Create Fundraiser Dialog */}
+      <CreateFundraiserDialog 
         open={showCreateDialog} 
         onOpenChange={setShowCreateDialog} 
       />

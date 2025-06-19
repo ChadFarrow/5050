@@ -47,7 +47,7 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
         ["completion_note", "Manually marked as completed by campaign creator"]
       ];
 
-      const content = `${result.message}\n\n✅ Campaign manually marked as completed by creator.`;
+      const content = `${result.message}\n\n✅ Fundraiser manually marked as completed by creator.`;
 
       publishEvent({
         kind: 31952,
@@ -62,13 +62,13 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
           queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
           
           toast.success(
-            "Campaign Marked Complete!",
+            "Fundraiser Marked Complete!",
             "This fundraiser will now appear in the completed tab."
           );
         },
         onError: (error) => {
           console.error('Failed to mark as completed:', error);
-          toast.error("Failed to Mark Complete", "Could not mark the campaign as completed. Please try again.");
+          toast.error("Failed to Mark Complete", "Could not mark the fundraiser as completed. Please try again.");
         }
       });
     } else {
@@ -81,8 +81,8 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
       ];
 
       const content = hasTicketSales 
-        ? `Campaign "${campaign.title}" has been manually closed by the creator. No winner was selected.`
-        : `Campaign "${campaign.title}" has been manually closed by the creator. No tickets were sold.`;
+        ? `Fundraiser "${campaign.title}" has been manually closed by the creator. No winner was selected.`
+        : `Fundraiser "${campaign.title}" has been manually closed by the creator. No tickets were sold.`;
 
       publishEvent({
         kind: 31952,
@@ -97,13 +97,13 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
           queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
           
           toast.success(
-            "Campaign Marked Complete!",
+            "Fundraiser Marked Complete!",
             "This fundraiser will now appear in the completed tab."
           );
         },
         onError: (error) => {
           console.error('Failed to publish completion event:', error);
-          toast.error("Failed to Mark Complete", "Could not mark the campaign as completed. Please try again.");
+          toast.error("Failed to Mark Complete", "Could not mark the fundraiser as completed. Please try again.");
         }
       });
     }
@@ -114,12 +114,12 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
       <CardHeader>
         <CardTitle className="flex items-center text-gray-800 dark:text-gray-200">
           <CheckSquare className="h-5 w-5 mr-2" />
-          Manual Campaign Completion
+          Manual Fundraiser Completion
         </CardTitle>
         <CardDescription>
           {result 
-            ? "Mark this campaign as complete to move it to the completed tab."
-            : "Close this campaign and move it to the completed tab without selecting a winner."
+            ? "Mark this fundraiser as complete to move it to the completed tab."
+            : "Close this fundraiser and move it to the completed tab without selecting a winner."
           }
         </CardDescription>
       </CardHeader>
@@ -138,10 +138,10 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            <strong>Note:</strong> This action will move the campaign to your completed tab. 
+            <strong>Note:</strong> This action will move the fundraiser to your completed tab. 
             {result 
               ? " Use this if you've already sent the prize payment manually."
-              : " This will close the campaign without selecting a winner."
+              : " This will close the fundraiser without selecting a winner."
             }
           </AlertDescription>
         </Alert>
@@ -156,7 +156,7 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
             htmlFor="confirm-completion" 
             className="text-sm cursor-pointer"
           >
-            I confirm I want to mark this campaign as completed
+            I confirm I want to mark this fundraiser as completed
             {result && " (prize has been paid separately)"}
           </label>
         </div>
@@ -169,7 +169,7 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
         >
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           <CheckSquare className="mr-2 h-4 w-4" />
-          {isPending ? "Marking Complete..." : "Mark Campaign as Completed"}
+          {isPending ? "Marking Complete..." : "Mark Fundraiser as Completed"}
         </Button>
       </CardContent>
     </Card>
