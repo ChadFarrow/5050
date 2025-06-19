@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog.tsx';
 import { toast } from '@/hooks/useToast.ts';
 import { useLoginActions } from '@/hooks/useLoginActions';
+import { useBitcoinConnect } from '@/hooks/useBitcoinConnect';
 import { generateSecretKey, nip19 } from 'nostr-tools';
 
 interface SignupDialogProps {
@@ -25,6 +26,7 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [nsec, setNsec] = useState('');
   const login = useLoginActions();
+  const { disconnect } = useBitcoinConnect();
 
   // Generate a proper nsec key using nostr-tools
   const generateKey = () => {
@@ -72,6 +74,9 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
   };
 
   const finishSignup = () => {
+    // Clear any existing wallet connection before creating new account
+    disconnect();
+    
     login.nsec(nsec);
 
     setStep('done');

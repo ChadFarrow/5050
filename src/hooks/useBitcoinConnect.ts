@@ -219,6 +219,16 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
       console.error('Bitcoin Connect disconnect failed:', error);
     }
     
+    // Clear ALL Bitcoin Connect localStorage to prevent auto-reconnection
+    try {
+      localStorage.removeItem('bc:config');
+      localStorage.removeItem('bc:currency');
+      localStorage.removeItem('bc:onpaid');
+      console.log('Cleared Bitcoin Connect localStorage');
+    } catch (error) {
+      console.error('Failed to clear Bitcoin Connect localStorage:', error);
+    }
+    
     // Always clean up WebLN and state regardless of API call success
     if (window.webln) {
       delete window.webln;

@@ -11,6 +11,7 @@ import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { LoginProvider } from '@/contexts/LoginContext';
+import { BitcoinConnectManager } from '@/components/BitcoinConnectManager';
 import AppRouter from './AppRouter';
 
 const queryClient = new QueryClient({
@@ -42,6 +43,7 @@ export function App() {
         <NostrLoginProvider storageKey='nostr:login'>
           <NostrProvider>
             <LoginProvider>
+              <BitcoinConnectManager />
               <TooltipProvider>
                 <Toaster />
                 <Sonner />

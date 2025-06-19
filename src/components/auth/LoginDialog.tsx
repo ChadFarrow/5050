@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
 import { useLoginActions } from '@/hooks/useLoginActions';
+import { useBitcoinConnect } from '@/hooks/useBitcoinConnect';
 
 interface LoginDialogProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, onS
   const [bunkerUri, setBunkerUri] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const login = useLoginActions();
+  const { disconnect } = useBitcoinConnect();
 
   const handleExtensionLogin = () => {
     setIsLoading(true);
@@ -35,6 +37,8 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, onS
       if (!('nostr' in window)) {
         throw new Error('Nostr extension not found. Please install a NIP-07 extension.');
       }
+      // Clear any existing wallet connection before logging in
+      disconnect();
       login.extension();
       onLogin();
       onClose();
@@ -50,6 +54,8 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, onS
     setIsLoading(true);
     
     try {
+      // Clear any existing wallet connection before logging in
+      disconnect();
       login.nsec(nsec);
       onLogin();
       onClose();
@@ -65,6 +71,8 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, onS
     setIsLoading(true);
     
     try {
+      // Clear any existing wallet connection before logging in
+      disconnect();
       login.bunker(bunkerUri);
       onLogin();
       onClose();

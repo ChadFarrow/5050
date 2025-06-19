@@ -158,10 +158,10 @@ export function LightningConfig() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open('https://mutinywallet.com', '_blank')}
+                  onClick={() => window.open('https://coinos.io', '_blank')}
                   className="text-xs"
                 >
-                  Mutiny <ExternalLink className="h-3 w-3 ml-1" />
+                  Coinos <ExternalLink className="h-3 w-3 ml-1" />
                 </Button>
               </div>
             </div>

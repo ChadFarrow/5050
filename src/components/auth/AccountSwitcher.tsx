@@ -18,11 +18,22 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LightningConfig } from '@/components/LightningConfig';
 import { useWallet } from '@/hooks/useWallet';
+import { useBitcoinConnect } from '@/hooks/useBitcoinConnect';
 
 export function AccountSwitcher() {
   const { currentUser, removeLogin } = useLoggedInAccounts();
   const { isConnected } = useWallet();
+  const { disconnect } = useBitcoinConnect();
   const [lightningDialogOpen, setLightningDialogOpen] = useState(false);
+
+  const handleLogout = () => {
+    if (!currentUser) return;
+    
+    // Clear wallet connection when logging out
+    disconnect();
+    // Remove the Nostr account
+    removeLogin(currentUser.id);
+  };
 
   if (!currentUser) return null;
 
@@ -66,7 +77,7 @@ export function AccountSwitcher() {
           {isConnected && <div className='w-2 h-2 rounded-full bg-green-500 ml-auto'></div>}
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => removeLogin(currentUser.id)}
+          onClick={handleLogout}
           className='flex items-center gap-2 cursor-pointer p-2 rounded-md text-red-500'
         >
           <LogOut className='w-4 h-4' />

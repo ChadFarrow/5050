@@ -173,3 +173,16 @@ body:has(bc-modal) * {
 body:has(bc-modal) bc-modal {
   pointer-events: auto !important;
 }
+
+/* Hide Coinos option from Bitcoin Connect modal */
+bc-modal [data-connector="coinos"],
+bc-modal .bc-connector[data-connector="coinos"],
+bc-modal button[data-connector="coinos"] {
+  display: none !important;
+}
+
+/* Also try hiding by text content */
+bc-modal button:has-text("Coinos"),
+bc-modal .bc-connector:has-text("Coinos") {
+  display: none !important;
+}
