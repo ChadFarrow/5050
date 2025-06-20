@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@/hooks/useWallet';
-import { useNostrBotHybrid } from '@/lib/nostr-bot-hybrid';
+import { announceFundraiserCreated } from '@/lib/nostr-bot-serverless';
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -67,7 +67,6 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const wallet = useWallet();
-  const { postFundraiserCreated } = useNostrBotHybrid();
   const [form, setForm] = useState<FundraiserForm>(initialForm);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
@@ -253,14 +252,14 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
                                form.podcast.trim() || 
                                'Podcaster';
             
-            await postFundraiserCreated({
+            await announceFundraiserCreated({
               title: form.title.trim(),
               creator: creatorName,
               amount: form.target > 0 ? parseInt(form.target) : undefined,
               endDate: endTimestamp,
               ticketPrice: Math.floor(ticketPriceMillisats / 1000), // Convert to sats
               description: form.content.trim(),
-              url: window.location.origin, // You can make this more specific
+              url: window.location.origin,
             });
             console.log('Bot announcement posted for new fundraiser');
           } catch (error) {
