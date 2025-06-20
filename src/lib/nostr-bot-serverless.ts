@@ -82,3 +82,91 @@ export async function announceWinner(options: WinnerAnnouncementOptions): Promis
     throw error;
   }
 }
+
+interface TicketPurchaseOptions {
+  title: string;
+  creator: string;
+  buyerName: string;
+  buyerPubkey: string;
+  ticketCount: number;
+  ticketPrice: number;
+  totalAmount: number;
+  url?: string;
+}
+
+interface DonationOptions {
+  title: string;
+  creator: string;
+  donorName: string;
+  donorPubkey: string;
+  amount: number;
+  url?: string;
+}
+
+export async function announceTicketPurchase(options: TicketPurchaseOptions): Promise<void> {
+  try {
+    console.log('🚀 Attempting to post ticket purchase announcement:', options);
+    
+    const response = await fetch('/api/bot-announce-ticket', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(options),
+    });
+
+    const responseText = await response.text();
+    console.log('📄 Ticket purchase response:', responseText);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${responseText}`);
+    }
+
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${responseText}`);
+    }
+
+    console.log('✅ Bot ticket purchase announcement posted:', result.eventId);
+    return result;
+  } catch (error) {
+    console.error('❌ Failed to post bot ticket purchase announcement:', error);
+    throw error;
+  }
+}
+
+export async function announceDonation(options: DonationOptions): Promise<void> {
+  try {
+    console.log('🚀 Attempting to post donation announcement:', options);
+    
+    const response = await fetch('/api/bot-announce-donation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(options),
+    });
+
+    const responseText = await response.text();
+    console.log('📄 Donation response:', responseText);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${responseText}`);
+    }
+
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${responseText}`);
+    }
+
+    console.log('✅ Bot donation announcement posted:', result.eventId);
+    return result;
+  } catch (error) {
+    console.error('❌ Failed to post bot donation announcement:', error);
+    throw error;
+  }
+}

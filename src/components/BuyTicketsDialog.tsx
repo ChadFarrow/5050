@@ -22,6 +22,7 @@ import type { Campaign } from "@/hooks/useCampaigns";
 import type { LightningInvoice as LightningInvoiceType } from "@/types/lightning";
 import type { NostrEvent } from "@nostrify/nostrify";
 import { useQueryClient } from '@tanstack/react-query';
+import { announceTicketPurchase } from "@/lib/nostr-bot-serverless";
 
 // Utility function to generate a deterministic payment hash from bolt11 invoice
 function extractPaymentHashFromBolt11(bolt11: string): string | null {
@@ -251,6 +252,30 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
         // Show success toast
         toast.success("Tickets Purchased", `You purchased ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`);
+
+        // Announce ticket purchase on Nostr (bot posting)
+        try {
+          const buyerName = user?.metadata?.name || 
+                           user?.metadata?.display_name || 
+                           user?.metadata?.displayName ||
+                           user?.pubkey?.substring(0, 8) + '...' ||
+                           'Anonymous';
+          
+          announceTicketPurchase({
+            title: campaign.title,
+            creator: campaign.creator || 'Podcaster',
+            buyerName: buyerName,
+            buyerPubkey: signedEvent.pubkey,
+            ticketCount: tickets,
+            ticketPrice: Math.floor(totalCost / tickets),
+            totalAmount: totalCost,
+            url: window.location.origin,
+          });
+          console.log('🤖 Bot ticket purchase announcement initiated');
+        } catch (error) {
+          console.warn('Failed to post bot ticket purchase announcement:', error);
+          // Don't fail the whole process if bot posting fails
+        }
 
         // Reset form and close dialog only after successful event publishing
         setTicketCount("1");

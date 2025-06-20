@@ -22,6 +22,7 @@ import type { Campaign } from "@/hooks/useCampaigns";
 import type { LightningInvoice as LightningInvoiceType } from "@/types/lightning";
 import type { NostrEvent } from "@nostrify/nostrify";
 import { useQueryClient } from '@tanstack/react-query';
+import { announceDonation } from "@/lib/nostr-bot-serverless";
 
 // Utility function to generate a deterministic payment hash from bolt11 invoice
 function extractPaymentHashFromBolt11(bolt11: string): string | null {
@@ -268,6 +269,32 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
 
         // Show success toast
         toast.success("Donation Complete", `You donated ${formatSats(donationMsats)} to ${campaign.title}`);
+
+        // Announce donation on Nostr (bot posting) - only if not anonymous
+        if (!isAnonymous) {
+          try {
+            const donorName = user?.metadata?.name || 
+                             user?.metadata?.display_name || 
+                             user?.metadata?.displayName ||
+                             user?.pubkey?.substring(0, 8) + '...' ||
+                             'Anonymous';
+            
+            announceDonation({
+              title: campaign.title,
+              creator: campaign.creator || 'Podcaster',
+              donorName: donorName,
+              donorPubkey: signedEvent.pubkey,
+              amount: Math.floor(donationMsats / 1000), // Convert to sats
+              url: window.location.origin,
+            });
+            console.log('🤖 Bot donation announcement initiated');
+          } catch (error) {
+            console.warn('Failed to post bot donation announcement:', error);
+            // Don't fail the whole process if bot posting fails
+          }
+        } else {
+          console.log('🤖 Skipping bot announcement for anonymous donation');
+        }
 
         // Reset form and close dialog only after successful event publishing
         setDonationAmount("");
