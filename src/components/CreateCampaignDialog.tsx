@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@/hooks/useWallet';
-import { announceFundraiserCreated } from '@/lib/nostr-bot-serverless';
+import { useNostrBotHybrid } from '@/lib/nostr-bot-hybrid';
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -67,6 +67,7 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const wallet = useWallet();
+  const { postFundraiserCreated } = useNostrBotHybrid();
   const [form, setForm] = useState<FundraiserForm>(initialForm);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
@@ -252,7 +253,7 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
                                form.podcast.trim() || 
                                'Podcaster';
             
-            await announceFundraiserCreated({
+            await postFundraiserCreated({
               title: form.title.trim(),
               creator: creatorName,
               amount: form.target > 0 ? parseInt(form.target) : undefined,

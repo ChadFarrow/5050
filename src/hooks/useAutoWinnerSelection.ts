@@ -5,7 +5,7 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useWinnerNotification } from '@/hooks/useWinnerNotification';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatSats } from '@/lib/utils';
-import { announceWinner } from '@/lib/nostr-bot-serverless';
+import { useNostrBotHybrid } from '@/lib/nostr-bot-hybrid';
 import type { Fundraiser } from '@/hooks/useCampaigns';
 import type { CampaignStats, TicketPurchase } from '@/hooks/useCampaignStats';
 
@@ -42,6 +42,7 @@ export function useAutoWinnerSelection() {
   const { data: fundraisers } = useFundraisers();
   const { mutate: publishEvent } = useNostrPublish();
   const { sendWinnerNotification } = useWinnerNotification();
+  const { postWinnerAnnouncement } = useNostrBotHybrid();
   const queryClient = useQueryClient();
   const processedFundraisers = useRef<Set<string>>(new Set());
 
@@ -227,7 +228,7 @@ export function useAutoWinnerSelection() {
             try {
               const creatorName = fundraiser.podcast || 'Anonymous';
               const winnerName = 'Winner'; // We don't have winner's display name easily available
-              await announceWinner({
+              await postWinnerAnnouncement({
                 title: fundraiser.title,
                 creator: creatorName,
                 winner: winnerName,
