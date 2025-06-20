@@ -22,7 +22,7 @@ export async function announceFundraiserCreated(options: FundraiserUpdateOptions
   try {
     console.log('🚀 Attempting to post to /api/bot/simple-announce with:', options);
     
-    const response = await fetch('/api/bot/simple-announce', {
+    const response = await fetch('/api/bot/test-simple', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
