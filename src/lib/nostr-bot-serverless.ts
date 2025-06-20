@@ -20,6 +20,8 @@ interface WinnerAnnouncementOptions {
 
 export async function announceFundraiserCreated(options: FundraiserUpdateOptions): Promise<void> {
   try {
+    console.log('🚀 Attempting to post to /api/bot/announce-fundraiser with:', options);
+    
     const response = await fetch('/api/bot/announce-fundraiser', {
       method: 'POST',
       headers: {
@@ -28,12 +30,25 @@ export async function announceFundraiserCreated(options: FundraiserUpdateOptions
       body: JSON.stringify(options),
     });
 
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+    
+    // Get response text first to see what we're actually getting
+    const responseText = await response.text();
+    console.log('📄 Raw response:', responseText);
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+      throw new Error(`HTTP ${response.status}: ${responseText}`);
     }
 
-    const result = await response.json();
+    // Try to parse as JSON
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${responseText}`);
+    }
+
     console.log('✅ Bot fundraiser announcement posted:', result.eventId);
     
     return result;
