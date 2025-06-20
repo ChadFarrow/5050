@@ -1,7 +1,5 @@
 // Vercel serverless function for announcing fundraiser winners
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { finalizeEvent, nip19 } from 'nostr-tools';
-import { Relay } from 'nostr-tools/relay';
 
 interface WinnerData {
   title: string;
@@ -19,6 +17,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Import dynamically to avoid build issues
+    const { finalizeEvent, nip19 } = await import('nostr-tools');
+    const { Relay } = await import('nostr-tools/relay');
+    
     const botNsec = process.env.PODRAFFLE_BOT_NSEC;
     
     if (!botNsec) {
