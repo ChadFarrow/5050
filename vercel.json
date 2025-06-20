@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/bot/announce-fundraiser.ts": {
-      "runtime": "@vercel/node"
-    },
-    "api/bot/announce-winner.ts": {
-      "runtime": "@vercel/node"
-    }
-  },
   "rewrites": [
     {
       "source": "/((?!api).*)",
