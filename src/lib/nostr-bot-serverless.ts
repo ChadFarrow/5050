@@ -20,9 +20,9 @@ interface WinnerAnnouncementOptions {
 
 export async function announceFundraiserCreated(options: FundraiserUpdateOptions): Promise<void> {
   try {
-    console.log('🚀 Attempting to post to /api/bot/simple-announce with:', options);
+    console.log('🚀 Attempting to post to /api/bot-announce with:', options);
     
-    const response = await fetch('/api/bot/test-simple', {
+    const response = await fetch('/api/bot-announce', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

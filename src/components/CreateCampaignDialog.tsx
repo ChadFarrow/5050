@@ -237,13 +237,16 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
       }, {
         onSuccess: async (eventId) => {
           console.log('Fundraiser created:', eventId);
+          console.log('📋 About to show toast and invalidate queries...');
           toast({
             title: "Success",
             description: "Fundraiser created successfully",
           });
           queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
+          console.log('📋 Toast shown and queries invalidated. Starting bot announcement...');
           
           // Announce new fundraiser on Nostr (bot posting)
+          console.log('🤖 Starting bot announcement process...');
           try {
             // Get creator name from user metadata
             const creatorName = user?.metadata?.name || 
