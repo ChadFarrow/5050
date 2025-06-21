@@ -5,6 +5,7 @@ import Index from "./pages/Index";
 import Campaign from "./pages/Campaign";
 import Demo from "./pages/Demo";
 import HowItWorks from "./pages/HowItWorks";
+import { BitcoinConnectTestPage } from "./pages/BitcoinConnectTest";
 import NotFound from "./pages/NotFound";
 
 export function AppRouter() {
@@ -18,6 +19,7 @@ export function AppRouter() {
         <Route path="/:nip19" element={<Campaign />} />
         <Route path="/demo" element={<Demo />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/bitcoin-connect-test" element={<BitcoinConnectTestPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

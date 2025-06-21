@@ -1,7 +1,7 @@
 // NOTE: This file is stable and usually should not be modified.
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
-import { ChevronDown, LogOut, Zap } from 'lucide-react';
+import { ChevronDown, LogOut, Zap, RefreshCw } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +22,7 @@ import { useBitcoinConnect } from '@/hooks/useBitcoinConnect';
 
 export function AccountSwitcher() {
   const { currentUser, removeLogin } = useLoggedInAccounts();
-  const { isConnected } = useWallet();
+  const { isConnected, isConnecting } = useWallet();
   const { disconnect } = useBitcoinConnect();
   const [lightningDialogOpen, setLightningDialogOpen] = useState(false);
 
@@ -74,7 +74,8 @@ export function AccountSwitcher() {
         >
           <Zap className='w-4 h-4' />
           <span>Lightning Wallet</span>
-          {isConnected && <div className='w-2 h-2 rounded-full bg-green-500 ml-auto'></div>}
+          {isConnecting && <RefreshCw className='w-3 h-3 animate-spin text-yellow-500 ml-auto' />}
+          {isConnected && !isConnecting && <div className='w-2 h-2 rounded-full bg-green-500 ml-auto'></div>}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={handleLogout}

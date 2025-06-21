@@ -27,6 +27,7 @@ export interface BitcoinConnectActions {
   getBalance: () => Promise<number>;
   getInfo: () => Promise<{ alias?: string; pubkey?: string }>;
   closeModal: () => void;
+  refreshState: () => void;
 }
 
 export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions {
@@ -70,6 +71,17 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
         isConnecting: false,
         error: undefined,
       }));
+
+      // Force immediate state check after connection
+      setTimeout(() => {
+        const connected = typeof window.webln?.makeInvoice === 'function';
+        console.log('🚀 Immediate post-connection check:', { connected });
+        setState(prev => ({
+          ...prev,
+          isConnected: connected,
+          isConnecting: false,
+        }));
+      }, 100);
 
       // Try to get initial wallet info if makeInvoice is available
       if (typeof window.webln?.makeInvoice === 'function') {
@@ -144,11 +156,18 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
           weblnEnabled: connected,
           makeInvoice: !!window.webln?.makeInvoice
         });
-        setState(prev => ({
-          ...prev,
-          isConnected: connected,
-          isConnecting: false,
-        }));
+        setState(prev => {
+          // Only update if the connection state actually changed
+          if (prev.isConnected !== connected) {
+            console.log('🔄 Connection state changed:', { from: prev.isConnected, to: connected });
+            return {
+              ...prev,
+              isConnected: connected,
+              isConnecting: false,
+            };
+          }
+          return prev;
+        });
       } catch (error) {
         console.warn('Failed to check initial Bitcoin Connect state:', error);
       }
@@ -157,12 +176,21 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
     // Delay initial check to allow Bitcoin Connect to initialize
     setTimeout(checkInitialState, 100);
 
-    // Also check periodically in case connection state changes
-    const interval = setInterval(checkInitialState, 2000);
+    // Check more frequently initially, then less frequently
+    const quickInterval = setInterval(checkInitialState, 500); // Check every 500ms for first 10 seconds
+    const slowInterval = setTimeout(() => {
+      clearInterval(quickInterval);
+      const slowCheckInterval = setInterval(checkInitialState, 3000); // Then every 3 seconds
+      unsubscribers.push(() => clearInterval(slowCheckInterval));
+    }, 10000);
+
+    unsubscribers.push(() => {
+      clearInterval(quickInterval);
+      clearTimeout(slowInterval);
+    });
 
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
-      clearInterval(interval);
     };
   }, []);
 
@@ -347,6 +375,40 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
     }
   }, []);
 
+  const refreshState = useCallback(() => {
+    console.log('🔄 Manual state refresh triggered');
+    const connected = typeof window.webln?.makeInvoice === 'function';
+    console.log('Manual refresh check:', {
+      webln: !!window.webln,
+      weblnEnabled: connected,
+      makeInvoice: !!window.webln?.makeInvoice
+    });
+    
+    setState(prev => ({
+      ...prev,
+      isConnected: connected,
+      isConnecting: false,
+    }));
+
+    // Also try to fetch wallet info if connected
+    if (connected && window.webln) {
+      Promise.allSettled([
+        window.webln.getBalance?.(),
+        window.webln.getInfo?.(),
+      ]).then(([balanceResult, infoResult]) => {
+        console.log('Manual refresh wallet info:', { balanceResult, infoResult });
+        setState(prev => ({
+          ...prev,
+          balance: balanceResult.status === 'fulfilled' && balanceResult.value ? balanceResult.value.balance : undefined,
+          nodeInfo: infoResult.status === 'fulfilled' && infoResult.value ? {
+            alias: infoResult.value.node?.alias,
+            pubkey: infoResult.value.node?.pubkey,
+          } : undefined,
+        }));
+      });
+    }
+  }, []);
+
   return {
     ...state,
     connect,
@@ -356,5 +418,6 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
     getBalance,
     getInfo,
     closeModal,
+    refreshState,
   };
 }

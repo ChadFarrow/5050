@@ -1,4 +1,5 @@
 import { useBitcoinConnect } from './useBitcoinConnect';
+import { useBitcoinConnectEvents } from './useBitcoinConnectEvents';
 
 export type WalletProvider = 'bitcoin-connect';
 
@@ -21,10 +22,14 @@ export interface WalletActions {
   getInfo: () => Promise<{ alias?: string; pubkey?: string }>;
   disconnect: () => void;
   closeModal: () => void;
+  refreshState: () => void;
 }
 
 export function useWallet(): WalletState & WalletActions {
   const bitcoinConnect = useBitcoinConnect();
+  
+  // Listen for Bitcoin Connect events to force re-renders
+  useBitcoinConnectEvents();
 
   if (!bitcoinConnect.isConnected) {
     return {
@@ -50,6 +55,10 @@ export function useWallet(): WalletState & WalletActions {
         // Close modal even when not connected
         bitcoinConnect.closeModal();
       },
+      refreshState: () => {
+        // Refresh state even when not connected
+        bitcoinConnect.refreshState();
+      },
     };
   }
 
@@ -66,5 +75,6 @@ export function useWallet(): WalletState & WalletActions {
     getInfo: bitcoinConnect.getInfo,
     disconnect: bitcoinConnect.disconnect,
     closeModal: bitcoinConnect.closeModal,
+    refreshState: bitcoinConnect.refreshState,
   };
 }

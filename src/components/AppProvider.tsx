@@ -41,17 +41,50 @@ export function AppProvider(props: AppProviderProps) {
   useEffect(() => {
     const loadBitcoinConnect = async () => {
       try {
+        console.log('Loading Bitcoin Connect...');
+        
         // Import Bitcoin Connect to register web components
         await import('@getalby/bitcoin-connect');
         
-        // Initialize Bitcoin Connect with default config
+        // Wait a bit for web components to register
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Initialize Bitcoin Connect with proper connector configuration
         const { init } = await import('@getalby/bitcoin-connect');
-        init({
+        
+        const config = {
           appName: 'PodRaffle',
           showBalance: true,
-        });
+          // Explicitly enable all connector types including browser extensions
+          connectors: [
+            'extension',     // Browser extensions (Alby, etc.) - put this first
+            'nwc',           // Nostr Wallet Connect
+            'lndhub',        // LndHub wallets
+            'lnd',           // LND node
+            'eclair',        // Eclair node
+            'phoenixd',      // Phoenix daemon
+            'cashu',         // Cashu mints
+          ],
+          // Force show extension connector even if not immediately detected
+          showExtensionConnector: true,
+        };
         
-        console.log('Bitcoin Connect loaded and initialized');
+        console.log('Initializing Bitcoin Connect with config:', config);
+        init(config);
+        
+        console.log('Bitcoin Connect loaded and initialized with all connectors');
+        
+        // Verify web components are registered
+        setTimeout(() => {
+          const bcButton = document.querySelector('bc-button');
+          const bcModal = document.querySelector('bc-modal');
+          console.log('Bitcoin Connect web components check:', {
+            'bc-button': !!customElements.get('bc-button'),
+            'bc-modal': !!customElements.get('bc-modal'),
+            'bc-button-element': !!bcButton,
+            'bc-modal-element': !!bcModal,
+          });
+        }, 1000);
         
         // Add runtime modal fixes
         setTimeout(() => {
@@ -76,7 +109,7 @@ export function AppProvider(props: AppProviderProps) {
           console.log('Applied Bitcoin Connect modal fixes');
         }, 500);
       } catch (error) {
-        console.warn('Failed to load Bitcoin Connect:', error);
+        console.error('Failed to load Bitcoin Connect:', error);
       }
     };
 

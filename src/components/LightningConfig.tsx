@@ -40,6 +40,16 @@ export function LightningConfig() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Connection status indicator */}
+          {wallet.isConnecting && (
+            <Alert>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              <AlertDescription>
+                Connecting to Lightning wallet...
+              </AlertDescription>
+            </Alert>
+          )}
+
           {wallet.isConnected ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -50,9 +60,19 @@ export function LightningConfig() {
                     <Badge variant="secondary">{wallet.nodeInfo.alias}</Badge>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={wallet.disconnect}>
-                  Disconnect
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={wallet.refreshState}
+                    title="Refresh connection status"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={wallet.disconnect}>
+                    Disconnect
+                  </Button>
+                </div>
               </div>
 
               {wallet.balance !== undefined && (
@@ -97,19 +117,48 @@ export function LightningConfig() {
                   }}
                 />
                 
+                {/* Debug info */}
+                <div className="text-xs text-muted-foreground space-y-1 p-2 bg-muted/50 rounded">
+                  <div>Debug: bc-button registered: {String(!!customElements.get('bc-button'))}</div>
+                  <div>Debug: bc-modal registered: {String(!!customElements.get('bc-modal'))}</div>
+                  <div>Debug: WebLN available: {String(!!window.webln)}</div>
+                </div>
+                
                 <div className="flex items-center gap-2">
                   <Button 
-                    onClick={() => {
-                      // Fallback WebLN connection
-                      if (window.webln) {
-                        window.webln.enable();
+                    onClick={async () => {
+                      try {
+                        console.log('Manual WebLN connection attempt...');
+                        
+                        // Check if WebLN is available
+                        if (!window.webln) {
+                          console.log('WebLN not found, waiting for extension...');
+                          
+                          // Wait a bit for extension to load
+                          await new Promise(resolve => setTimeout(resolve, 1000));
+                          
+                          if (!window.webln) {
+                            alert('WebLN extension not detected. Please install and enable the Alby extension, then refresh the page.');
+                            return;
+                          }
+                        }
+                        
+                        console.log('WebLN found, enabling...');
+                        await window.webln.enable();
+                        console.log('WebLN enabled successfully');
+                        
+                        // Force a state update
+                        window.location.reload();
+                      } catch (error) {
+                        console.error('WebLN connection failed:', error);
+                        alert(`WebLN connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
                       }
                     }} 
                     disabled={wallet.isConnecting}
                     className="flex-1"
                     variant="outline"
                   >
-                    {wallet.isConnecting ? "Connecting..." : "Or Connect with WebLN"}
+                    {wallet.isConnecting ? "Connecting..." : "Enable Alby Extension"}
                   </Button>
                   
                   <Button
