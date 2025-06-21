@@ -68,7 +68,8 @@ interface BuyTicketsDialogProps {
 
 export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDialogProps) {
   const { user } = useCurrentUser();
-  const { mutate: publishEvent, isPending } = useNostrPublish();
+  const publishEventMutation = useNostrPublish();
+  const { mutate: publishEvent, isPending } = publishEventMutation;
   const { data: stats } = useCampaignStats(campaign.pubkey, campaign.dTag);
   const wallet = useWallet();
   const { toast } = useToast();
@@ -211,9 +212,11 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   };
 
   const handlePaymentComplete = async () => {
+    console.log('🎯 handlePaymentComplete called with invoice:', !!currentInvoice);
     if (!currentInvoice) return;
 
     try {
+      console.log('🎯 Starting payment processing...');
       setIsProcessingPayment(true);
 
       // Generate unique purchase ID
@@ -239,7 +242,8 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         created_at: Math.floor(Date.now() / 1000),
       };
 
-      const onSuccess = (signedEvent: NostrEvent) => {
+      const onSuccess = async (signedEvent: NostrEvent) => {
+        console.log('🎯 ONSUCCESS CALLBACK CALLED!!! Event ID:', signedEvent.id);
         console.log('✅ Ticket purchase event published successfully:', signedEvent.id);
         console.log('Invalidating queries for campaign:', { pubkey: campaign.pubkey, dTag: campaign.dTag });
         
@@ -279,8 +283,9 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         });
 
         // Announce ticket purchase on Nostr (bot posting)
+        console.log('🤖 Starting bot ticket purchase announcement...');
         try {
-          announceTicketPurchase({
+          const botData = {
             title: campaign.title,
             creator: creatorName,
             buyerName: buyerName,
@@ -289,10 +294,13 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
             ticketPrice: Math.floor(totalCost / tickets),
             totalAmount: totalCost,
             url: window.location.origin,
-          });
-          console.log('🤖 Bot ticket purchase announcement initiated');
+          };
+          console.log('🤖 Bot data:', botData);
+          
+          const result = await announceTicketPurchase(botData);
+          console.log('🤖 Bot ticket purchase announcement result:', result);
         } catch (error) {
-          console.warn('Failed to post bot ticket purchase announcement:', error);
+          console.error('❌ Failed to post bot ticket purchase announcement:', error);
           // Don't fail the whole process if bot posting fails
         }
 
@@ -310,8 +318,19 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         });
       };
 
-      // Publish event with normal method
-      publishEvent(eventData, { onSuccess, onError });
+      // Publish event using mutation directly to get proper callback support
+      console.log('🔄 About to publish event with onSuccess callback:', { eventData, hasOnSuccess: !!onSuccess });
+      console.log('🔄 Publishing event data:', eventData);
+      
+      try {
+        console.log('🔄 Calling mutateAsync...');
+        const signedEvent = await publishEventMutation.mutateAsync(eventData);
+        console.log('🎯 Event published successfully, calling onSuccess manually');
+        await onSuccess(signedEvent);
+      } catch (error) {
+        console.error('🎯 Event publish failed, calling onError manually:', error);
+        onError(error);
+      }
 
       // Create a NIP-57 donation event (kind 9735)
       // This is now redundant since the bot announces it, but we can leave it for compatibility
