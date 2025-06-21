@@ -107,7 +107,7 @@ export async function announceTicketPurchase(options: TicketPurchaseOptions): Pr
   try {
     console.log('🚀 Attempting to post ticket purchase announcement:', options);
     
-    const response = await fetch('/api/bot/announce-ticket', {
+    const response = await fetch('/api/bot-announce-ticket', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
