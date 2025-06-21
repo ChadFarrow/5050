@@ -297,10 +297,9 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         }
 
         // Reset form and close dialog only after successful event publishing
-        setTicketCount("1");
-        setMessage("");
-        setCurrentInvoice(null);
-        onOpenChange(false);
+        console.log('🎯 Attempting to close modal after successful purchase');
+        console.log('Modal states before close:', { isPending, isProcessingPayment, isCreatingInvoice });
+        handleClose(true); // Force close the modal
       };
 
       const onError = (error: unknown) => {
@@ -338,21 +337,38 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
       });
     } finally {
       setIsProcessingPayment(false);
+      
+      // Close modal after all processing is complete
+      console.log('🎯 Finally block - attempting to close modal after purchase processing');
+      console.log('Modal states in finally:', { isPending, isProcessingPayment, isCreatingInvoice });
+      setTimeout(() => {
+        handleClose(true); // Force close the modal with a small delay
+      }, 100);
     }
   };
 
-  const handleClose = () => {
-    if (!isPending && !isProcessingPayment && !isCreatingInvoice) {
+  const handleClose = (force = false) => {
+    console.log('🚪 handleClose called with force:', force);
+    console.log('Modal states during close:', { isPending, isProcessingPayment, isCreatingInvoice });
+    
+    if (force || (!isPending && !isProcessingPayment && !isCreatingInvoice)) {
+      console.log('✅ Closing modal - conditions met');
+      // Reset all form state
       setTicketCount("1");
       setMessage("");
       setCurrentInvoice(null);
       setShowConfig(false);
+      setIsProcessingPayment(false);
+      
+      // Call parent's onOpenChange to close the modal
       onOpenChange(false);
+    } else {
+      console.log('❌ Modal close blocked by pending states');
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
