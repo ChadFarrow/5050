@@ -96,7 +96,7 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
 
   return (
     <>
-      <Card className="group hover:shadow-lg transition-all duration-200 border-2 hover:border-purple-200 dark:hover:border-purple-800">
+      <Card className="group hover:shadow-lg transition-all duration-200 border-2 hover:border-purple-200 dark:hover:border-purple-800 flex flex-col h-full">
         <CardHeader className="space-y-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-3">
@@ -222,7 +222,7 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
           )}
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 flex flex-col flex-grow">
           {/* Progress */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
@@ -244,12 +244,14 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
             ) : (
               <Progress value={progressPercent} className="h-2" />
             )}
-            {totalDonations > 0 && (
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Tickets: {formatSats(totalRaised)}</span>
-                <span>Prize Pool Donations: {formatSats(totalDonations)}</span>
-              </div>
-            )}
+            <div className="h-4">
+              {totalDonations > 0 && (
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Tickets: {formatSats(totalRaised)}</span>
+                  <span>Prize Pool Donations: {formatSats(totalDonations)}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Stats Grid */}
@@ -288,98 +290,100 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-2 pt-2">
-            {fundraiser.isActive && !winner && user ? (
-              <div className="space-y-2">
-                <Button 
-                  onClick={() => setShowBuyDialog(true)}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-sm"
-                  size="sm"
-                >
-                  <Ticket className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Buy Tickets</span>
-                  <span className="sm:hidden">Buy</span>
-                </Button>
-                <div className="flex gap-1">
+          <div className="mt-auto pt-6">
+            {/* Action Buttons */}
+            <div className="space-y-2">
+              {fundraiser.isActive && !winner && user ? (
+                <div className="space-y-2">
                   <Button 
-                    onClick={() => setShowDonateDialog(true)}
-                    variant="outline"
-                    className="flex-1 text-sm border-pink-200 text-pink-600 hover:bg-pink-50 hover:text-pink-700 hover:border-pink-300"
+                    onClick={() => setShowBuyDialog(true)}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-sm"
                     size="sm"
                   >
-                    <Heart className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Donate to prize pool</span>
-                    <span className="sm:hidden">Donate</span>
+                    <Ticket className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Buy Tickets</span>
+                    <span className="sm:hidden">Buy</span>
                   </Button>
-                  {fundraiser.podcastUrl && (
-                    <Button variant="outline" size="sm" asChild className="flex-shrink-0">
-                      <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
+                  <div className="flex gap-1">
+                    <Button 
+                      onClick={() => setShowDonateDialog(true)}
+                      variant="outline"
+                      className="flex-1 text-sm border-pink-200 text-pink-600 hover:bg-pink-50 hover:text-pink-700 hover:border-pink-300"
+                      size="sm"
+                    >
+                      <Heart className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Donate to prize pool</span>
+                      <span className="sm:hidden">Donate</span>
                     </Button>
-                  )}
+                    {fundraiser.podcastUrl && (
+                      <Button variant="outline" size="sm" asChild className="flex-shrink-0">
+                        <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : !user ? (
-              <div className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full text-sm" 
-                  size="sm"
-                  onClick={openLoginDialog}
-                >
-                  <span className="hidden sm:inline">Login to Buy Tickets</span>
-                  <span className="sm:hidden">Login to Buy</span>
-                </Button>
-                <div className="flex gap-1">
+              ) : !user ? (
+                <div className="space-y-2">
                   <Button 
                     variant="outline" 
-                    className="flex-1 text-sm" 
+                    className="w-full text-sm" 
                     size="sm"
                     onClick={openLoginDialog}
                   >
-                    <span className="hidden sm:inline">Login to Donate</span>
-                    <span className="sm:hidden">Login</span>
+                    <span className="hidden sm:inline">Login to Buy Tickets</span>
+                    <span className="sm:hidden">Login to Buy</span>
                   </Button>
-                  {fundraiser.podcastUrl && (
-                    <Button variant="outline" size="sm" asChild className="flex-shrink-0">
-                      <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 text-sm" 
+                      size="sm"
+                      onClick={openLoginDialog}
+                    >
+                      <span className="hidden sm:inline">Login to Donate</span>
+                      <span className="sm:hidden">Login</span>
                     </Button>
-                  )}
+                    {fundraiser.podcastUrl && (
+                      <Button variant="outline" size="sm" asChild className="flex-shrink-0">
+                        <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full text-sm" size="sm" disabled>
-                  <span className="hidden sm:inline">{winner ? "Winner Selected" : "Fundraiser Ended"}</span>
-                  <span className="sm:hidden">{winner ? "Won" : "Ended"}</span>
-                </Button>
-                <div className="flex gap-1">
-                  <Button variant="outline" className="flex-1 text-sm" size="sm" disabled>
+              ) : (
+                <div className="space-y-2">
+                  <Button variant="outline" className="w-full text-sm" size="sm" disabled>
                     <span className="hidden sm:inline">{winner ? "Winner Selected" : "Fundraiser Ended"}</span>
                     <span className="sm:hidden">{winner ? "Won" : "Ended"}</span>
                   </Button>
-                  {fundraiser.podcastUrl && (
-                    <Button variant="outline" size="sm" asChild className="flex-shrink-0">
-                      <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
+                  <div className="flex gap-1">
+                    <Button variant="outline" className="flex-1 text-sm" size="sm" disabled>
+                      <span className="hidden sm:inline">{winner ? "Winner Selected" : "Fundraiser Ended"}</span>
+                      <span className="sm:hidden">{winner ? "Won" : "Ended"}</span>
                     </Button>
-                  )}
+                    {fundraiser.podcastUrl && (
+                      <Button variant="outline" size="sm" asChild className="flex-shrink-0">
+                        <a href={fundraiser.podcastUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Additional Info */}
+            {fundraiser.episode && (
+              <div className="text-xs text-muted-foreground border-t pt-3 mt-4">
+                Episode: {fundraiser.episode}
               </div>
             )}
           </div>
-
-          {/* Additional Info */}
-          {fundraiser.episode && (
-            <div className="text-xs text-muted-foreground border-t pt-3">
-              Episode: {fundraiser.episode}
-            </div>
-          )}
         </CardContent>
       </Card>
 
