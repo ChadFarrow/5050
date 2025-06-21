@@ -3,6 +3,7 @@ import { Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
@@ -27,6 +28,7 @@ export function DeleteFundraiserDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false);
 
   // Only allow deletion if user is the creator and no tickets have been sold
   const canDelete = user?.pubkey === fundraiser.pubkey && !hasTickets && fundraiser.isActive;
@@ -90,6 +92,7 @@ export function DeleteFundraiserDialog({
 
   const handleClose = () => {
     if (!isPending && !isDeleting) {
+      setConfirmChecked(false);
       onOpenChange(false);
     }
   };
@@ -139,6 +142,22 @@ export function DeleteFundraiserDialog({
           )}
         </div>
 
+        {canDelete && (
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox 
+              id="confirm-delete" 
+              checked={confirmChecked}
+              onCheckedChange={(checked) => setConfirmChecked(checked === true)}
+            />
+            <label 
+              htmlFor="confirm-delete" 
+              className="text-sm cursor-pointer font-medium text-red-600 dark:text-red-400"
+            >
+              I understand this action cannot be undone
+            </label>
+          </div>
+        )}
+
         <DialogFooter>
           <Button 
             variant="outline" 
@@ -150,7 +169,7 @@ export function DeleteFundraiserDialog({
           <Button 
             variant="destructive" 
             onClick={handleDelete} 
-            disabled={!canDelete || isPending || isDeleting}
+            disabled={!canDelete || !confirmChecked || isPending || isDeleting}
           >
             {(isPending || isDeleting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Delete Fundraiser

@@ -3,6 +3,7 @@ import { Trophy, Dice6, AlertTriangle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useWinnerNotification } from "@/hooks/useWinnerNotification";
@@ -52,6 +53,7 @@ export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
   const toast = useToastUtils();
   const queryClient = useQueryClient();
   const [isDrawing, setIsDrawing] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false);
 
   // Check if user is the campaign creator
   const isCreator = user?.pubkey === campaign.pubkey;
@@ -71,7 +73,7 @@ export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
   }
 
   const handleDrawWinner = async () => {
-    if (!user || stats.totalTickets === 0) return;
+    if (!user || stats.totalTickets === 0 || !confirmChecked) return;
 
     setIsDrawing(true);
     
@@ -225,16 +227,30 @@ export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
           </div>
         </div>
 
-        <Alert>
+        <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            This action cannot be undone. The winner will be selected using cryptographically secure randomness.
+            <strong>⚠️ WARNING:</strong> This action is permanent and cannot be undone! Once you draw a winner, the funds will be distributed and the fundraiser will end. Make sure you're ready to proceed.
           </AlertDescription>
         </Alert>
 
+        <div className="flex items-center space-x-2 pt-2">
+          <Checkbox 
+            id="confirm-draw" 
+            checked={confirmChecked}
+            onCheckedChange={(checked) => setConfirmChecked(checked === true)}
+          />
+          <label 
+            htmlFor="confirm-draw" 
+            className="text-sm cursor-pointer font-medium text-red-600 dark:text-red-400"
+          >
+            I understand this will permanently end the fundraiser and select a winner
+          </label>
+        </div>
+
         <Button
           onClick={handleDrawWinner}
-          disabled={isPending || isDrawing}
+          disabled={isPending || isDrawing || !confirmChecked}
           className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
           size="lg"
         >

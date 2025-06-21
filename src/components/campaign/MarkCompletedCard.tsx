@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckSquare, Loader2, Info } from "lucide-react";
+import { CheckSquare, Loader2, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -135,13 +135,13 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
           </div>
         )}
 
-        <Alert>
-          <Info className="h-4 w-4" />
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Note:</strong> This action will move the fundraiser to your completed tab. 
+            <strong>⚠️ WARNING:</strong> This action will permanently end the fundraiser{result ? "" : " without selecting a winner"}. 
             {result 
-              ? " Use this if you've already sent the prize payment manually."
-              : " This will close the fundraiser without selecting a winner."
+              ? " Only use this if you've already sent the prize payment manually outside the platform."
+              : " This will close the fundraiser and no winner will be drawn - participants will not receive prizes."
             }
           </AlertDescription>
         </Alert>
@@ -154,10 +154,10 @@ export function MarkCompletedCard({ campaign, result, hasTicketSales }: MarkComp
           />
           <label 
             htmlFor="confirm-completion" 
-            className="text-sm cursor-pointer"
+            className="text-sm cursor-pointer font-medium text-red-600 dark:text-red-400"
           >
-            I confirm I want to mark this fundraiser as completed
-            {result && " (prize has been paid separately)"}
+            I understand this will permanently end the fundraiser
+            {result ? " (I have already paid the prize separately)" : " without selecting a winner"}
           </label>
         </div>
 
