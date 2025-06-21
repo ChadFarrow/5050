@@ -14,31 +14,51 @@ export function useLoggedInAccounts() {
   const { nostr } = useNostr();
   const { logins, removeLogin } = useNostrLogin();
 
-  const { data: currentUser } = useQuery({
+  const { data: currentUser, isLoading } = useQuery({
     queryKey: ['current-user', logins[0]?.id],
     queryFn: async ({ signal }) => {
       const login = logins[0];
       if (!login) return undefined;
 
-      const events = await nostr.query(
-        [{ kinds: [0], authors: [login.pubkey] }],
-        { signal: AbortSignal.any([signal, AbortSignal.timeout(1500)]) },
-      );
+      // Try multiple times with different timeouts to handle slow relays
+      const timeouts = [3000, 5000, 8000];
+      
+      for (const timeout of timeouts) {
+        try {
+          const events = await nostr.query(
+            [{ kinds: [0], authors: [login.pubkey] }],
+            { signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]) },
+          );
 
-      const event = events.find((e) => e.pubkey === login.pubkey);
-      try {
-        const metadata = n.json().pipe(n.metadata()).parse(event?.content);
-        return { id: login.id, pubkey: login.pubkey, metadata, event };
-      } catch {
-        return { id: login.id, pubkey: login.pubkey, metadata: {}, event };
+          const event = events.find((e) => e.pubkey === login.pubkey);
+          
+          if (event && event.content) {
+            try {
+              const metadata = n.json().pipe(n.metadata()).parse(event.content);
+              return { id: login.id, pubkey: login.pubkey, metadata, event };
+            } catch (error) {
+              // If parsing fails, continue to next attempt or fallback
+              continue;
+            }
+          }
+        } catch (error) {
+          // If this timeout fails, try the next one
+          continue;
+        }
       }
+
+      // If all attempts fail, return with empty metadata
+      return { id: login.id, pubkey: login.pubkey, metadata: {}, event: undefined };
     },
-    retry: 3,
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!logins[0],
   });
 
   return {
     currentUser,
     removeLogin,
+    isLoading,
   };
 }

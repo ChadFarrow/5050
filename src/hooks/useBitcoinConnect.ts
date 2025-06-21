@@ -392,20 +392,35 @@ export function useBitcoinConnect(): BitcoinConnectState & BitcoinConnectActions
 
     // Also try to fetch wallet info if connected
     if (connected && window.webln) {
-      Promise.allSettled([
-        window.webln.getBalance?.(),
-        window.webln.getInfo?.(),
-      ]).then(([balanceResult, infoResult]) => {
-        console.log('Manual refresh wallet info:', { balanceResult, infoResult });
-        setState(prev => ({
-          ...prev,
-          balance: balanceResult.status === 'fulfilled' && balanceResult.value ? balanceResult.value.balance : undefined,
-          nodeInfo: infoResult.status === 'fulfilled' && infoResult.value ? {
-            alias: infoResult.value.node?.alias,
-            pubkey: infoResult.value.node?.pubkey,
-          } : undefined,
-        }));
-      });
+      // Ensure provider is enabled before getting info
+      const fetchWalletInfo = async () => {
+        try {
+          if (typeof window.webln.enable === 'function') {
+            await window.webln.enable();
+          }
+          
+          const results = await Promise.allSettled([
+            window.webln.getBalance?.(),
+            window.webln.getInfo?.(),
+          ]);
+          
+          const [balanceResult, infoResult] = results;
+          console.log('Manual refresh wallet info:', { balanceResult, infoResult });
+          
+          setState(prev => ({
+            ...prev,
+            balance: balanceResult.status === 'fulfilled' && balanceResult.value ? balanceResult.value.balance : undefined,
+            nodeInfo: infoResult.status === 'fulfilled' && infoResult.value ? {
+              alias: infoResult.value.node?.alias,
+              pubkey: infoResult.value.node?.pubkey,
+            } : undefined,
+          }));
+        } catch (error) {
+          console.log('Failed to fetch wallet info:', error);
+        }
+      };
+      
+      fetchWalletInfo();
     }
   }, []);
 

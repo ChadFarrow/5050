@@ -21,7 +21,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { useBitcoinConnect } from '@/hooks/useBitcoinConnect';
 
 export function AccountSwitcher() {
-  const { currentUser, removeLogin } = useLoggedInAccounts();
+  const { currentUser, removeLogin, isLoading } = useLoggedInAccounts();
   const { isConnected, isConnecting } = useWallet();
   const { disconnect } = useBitcoinConnect();
   const [lightningDialogOpen, setLightningDialogOpen] = useState(false);
@@ -51,15 +51,19 @@ export function AccountSwitcher() {
             <AvatarFallback>{getDisplayName(currentUser).charAt(0)}</AvatarFallback>
           </Avatar>
           <div className='flex-1 text-left hidden md:block truncate'>
-            <a 
-              href={createNostrProfileUrl(currentUser.pubkey)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className='font-medium text-sm truncate hover:text-purple-600 transition-colors'
-              onClick={(e) => e.stopPropagation()}
-            >
-              {getDisplayName(currentUser)}
-            </a>
+            {isLoading ? (
+              <div className='font-medium text-sm text-muted-foreground'>Loading...</div>
+            ) : (
+              <a 
+                href={createNostrProfileUrl(currentUser.pubkey)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className='font-medium text-sm truncate hover:text-purple-600 transition-colors'
+                onClick={(e) => e.stopPropagation()}
+              >
+                {getDisplayName(currentUser)}
+              </a>
+            )}
           </div>
           <ChevronDown className='w-4 h-4 text-muted-foreground' />
         </button>
