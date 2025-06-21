@@ -5,24 +5,52 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { title, creator, buyerName, buyerPubkey, ticketCount, ticketPrice, totalAmount, url } = req.body;
+    const { title, creator, buyerName, buyerPubkey, ticketCount, ticketPrice, totalAmount, totalPrizePool, timeRemaining, url } = req.body;
     
     if (!title || !creator || !buyerName || !buyerPubkey) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    // Create enhanced content with prize pool and time remaining
+    const enhancedContent = `🎫 Ticket Purchase!
+
+🎧 ${title}
+👤 Creator: ${creator}
+🙋 Buyer: ${buyerName}
+🎫 ${ticketCount} ticket${ticketCount > 1 ? 's' : ''} @ ${ticketPrice} sats each
+💰 Total: ${totalAmount} sats
+
+🏆 Prize Pool: ${totalPrizePool} sats
+⏰ ${timeRemaining}
+
+${url}
+
+#PodRaffle #TicketPurchase #Bitcoin #Lightning #Nostr`;
 
     // Your dedicated server URL
     const NOSTR_SERVER_URL = process.env.NOSTR_SERVER_URL || 'http://192.241.148.111:3000';
     
     console.log('📤 Forwarding ticket purchase to Nostr server:', NOSTR_SERVER_URL);
     
-    // Forward to your dedicated Nostr server
+    // Forward to your dedicated Nostr server with pre-formatted content
     const response = await fetch(`${NOSTR_SERVER_URL}/post-ticket-purchase`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title, creator, buyerName, buyerPubkey, ticketCount, ticketPrice, totalAmount, url }),
+      body: JSON.stringify({ 
+        title, 
+        creator, 
+        buyerName, 
+        buyerPubkey, 
+        ticketCount, 
+        ticketPrice, 
+        totalAmount, 
+        totalPrizePool, 
+        timeRemaining, 
+        url,
+        content: enhancedContent // Pre-formatted content for the bot to use
+      }),
       timeout: 10000
     });
 

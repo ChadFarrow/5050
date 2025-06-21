@@ -70,6 +70,55 @@ The project uses Bitcoin Connect for a modern, user-friendly Lightning wallet co
 
 The implementation provides a streamlined Lightning experience focused on ease of use and broad wallet compatibility through the WebLN standard.
 
+## Nostr Bot Configuration
+
+**Digital Ocean Server:**
+- **Server IP**: `192.241.148.111:3000`
+- **PM2 Process**: `nostr-bot` (ID: 0)
+- **Bot Code Location**: `/opt/nostr-bot/server.js`
+- **Environment**: `PODRAFFLE_BOT_NSEC` set in `/opt/nostr-bot/.env`
+
+**Available Endpoints:**
+- `POST /post-to-nostr` - Fundraiser announcements (called by `/api/bot-announce`)
+- `POST /post-ticket-purchase` - Ticket purchase announcements (called by `/api/bot-announce-ticket`)  
+- `POST /post-donation` - Donation announcements (called by `/api/bot-announce-donation`)
+- `POST /announce-winner` - Winner announcements
+- `POST /health` - Health check
+- `POST /test` - Test posting
+
+**Vercel API Forwarding:**
+- `/api/bot-announce.js` → forwards to `/post-to-nostr`
+- `/api/bot-announce-ticket.js` → forwards to `/post-ticket-purchase`  
+- `/api/bot-announce-donation.js` → forwards to `/post-donation`
+
+**Bot Management Commands:**
+```bash
+# SSH to server
+ssh root@192.241.148.111
+
+# Check bot status
+pm2 list
+pm2 show 0
+
+# View logs
+pm2 logs 0 --lines 20
+
+# Restart bot
+pm2 restart 0
+
+# Edit bot code
+nano /opt/nostr-bot/server.js
+
+# Check what's running on port 3000
+netstat -tlnp | grep 3000
+```
+
+**Content Enhancement:**
+- Vercel functions create enhanced content with prize pool and time remaining
+- Profile links automatically added using `createNostrProfileUrl()` and nosta.me
+- Prices converted from msats to sats before sending to bot
+- Bot uses `req.body.content ||` fallback pattern for backward compatibility
+
 ## Custom NIP Implementation
 
 This project implements a custom NIP for podcast fundraising documented in `NIP.md`. The three event kinds (31950, 31951, 31952) are addressable events that enable:

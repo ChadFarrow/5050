@@ -23,7 +23,7 @@ import type { LightningInvoice as LightningInvoiceType } from "@/types/lightning
 import type { NostrEvent } from "@nostrify/nostrify";
 import { useQueryClient } from '@tanstack/react-query';
 import { announceTicketPurchase } from "@/lib/nostr-bot-serverless";
-import { useAuthorDisplay } from "@/lib/shared-utils";
+import { useAuthorDisplay, createNostrProfileUrl } from "@/lib/shared-utils";
 
 // Utility function to generate a deterministic payment hash from bolt11 invoice
 function extractPaymentHashFromBolt11(bolt11: string): string | null {
@@ -285,14 +285,41 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         // Announce ticket purchase on Nostr (bot posting)
         console.log('🤖 Starting bot ticket purchase announcement...');
         try {
+          const buyerProfileUrl = createNostrProfileUrl(signedEvent.pubkey);
+          
+          // Calculate fundraiser stats
+          const totalRaised = (stats?.totalRaised || 0) + totalCost; // Include current purchase
+          const totalDonations = stats?.totalDonations || 0;
+          const totalPrizePool = Math.floor((totalRaised + totalDonations) / 1000); // Convert to sats
+          const timeRemaining = campaign.endDate ? campaign.endDate - Math.floor(Date.now() / 1000) : null;
+          
+          // Format time remaining
+          let timeRemainingText = '';
+          if (timeRemaining && timeRemaining > 0) {
+            const days = Math.floor(timeRemaining / (24 * 60 * 60));
+            const hours = Math.floor((timeRemaining % (24 * 60 * 60)) / (60 * 60));
+            if (days > 0) {
+              timeRemainingText = `${days}d ${hours}h remaining`;
+            } else if (hours > 0) {
+              timeRemainingText = `${hours}h remaining`;
+            } else {
+              const minutes = Math.floor((timeRemaining % (60 * 60)) / 60);
+              timeRemainingText = `${minutes}m remaining`;
+            }
+          } else {
+            timeRemainingText = 'Ending soon';
+          }
+          
           const botData = {
             title: campaign.title,
             creator: creatorName,
-            buyerName: buyerName,
+            buyerName: `${buyerName} (${buyerProfileUrl})`, // Include profile link
             buyerPubkey: signedEvent.pubkey,
             ticketCount: tickets,
-            ticketPrice: Math.floor(totalCost / tickets),
-            totalAmount: totalCost,
+            ticketPrice: Math.floor(totalCost / tickets / 1000), // Convert msats to sats
+            totalAmount: Math.floor(totalCost / 1000), // Convert msats to sats
+            totalPrizePool: totalPrizePool, // Total prize pool in sats
+            timeRemaining: timeRemainingText, // Formatted time remaining
             url: window.location.origin,
           };
           console.log('🤖 Bot data:', botData);

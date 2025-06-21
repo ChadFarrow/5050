@@ -141,7 +141,7 @@ export async function announceDonation(options: DonationOptions): Promise<void> 
   try {
     console.log('🚀 Attempting to post donation announcement:', options);
     
-    const response = await fetch('/api/bot/announce-donation', {
+    const response = await fetch('/api/bot-announce-donation', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

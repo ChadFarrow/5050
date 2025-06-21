@@ -14,7 +14,7 @@ import { generateFundraiserInvoiceNWC } from "@/lib/nwc";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { useWallet } from "@/hooks/useWallet";
-import { useToastUtils, useAuthorDisplay } from "@/lib/shared-utils";
+import { useToastUtils, useAuthorDisplay, createNostrProfileUrl } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
 import { LightningInvoice } from "@/components/LightningInvoice";
 import { LightningConfig } from "@/components/LightningConfig";
@@ -279,10 +279,11 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
                              user?.pubkey?.substring(0, 8) + '...' ||
                              'Anonymous';
             
+            const donorProfileUrl = createNostrProfileUrl(user.pubkey);
             announceDonation({
               title: campaign.title,
               creator: creatorName,
-              donorName: donorName,
+              donorName: `${donorName} (${donorProfileUrl})`, // Include profile link
               donorPubkey: user.pubkey,
               amount: Math.floor(donationMsats / 1000), // Convert to sats
               url: window.location.origin,
