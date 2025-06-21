@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@/hooks/useWallet';
 import { announceFundraiserCreated } from '@/lib/nostr-bot-serverless';
+import { useAuthorDisplay } from '@/lib/shared-utils';
 
 interface CreateFundraiserDialogProps {
   open: boolean;
@@ -68,6 +69,7 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
   const { toast } = useToast();
   const wallet = useWallet();
   const [form, setForm] = useState<FundraiserForm>(initialForm);
+  const { displayName: creatorDisplayName } = useAuthorDisplay(user?.pubkey ?? '');
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
     try {
@@ -248,17 +250,15 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
           // Announce new fundraiser on Nostr (bot posting)
           console.log('🤖 Starting bot announcement process...');
           try {
-            // Get creator name from user metadata
-            const creatorName = user?.metadata?.name || 
-                               user?.metadata?.display_name || 
-                               user?.metadata?.displayName ||
-                               form.podcast.trim() || 
-                               'Podcaster';
+            // Get creator name from user metadata or fallback
+            const creatorName = creatorDisplayName || 
+                                form.podcast.trim() || 
+                                'Podcaster';
             
             await announceFundraiserCreated({
               title: form.title.trim(),
               creator: creatorName,
-              amount: form.target > 0 ? parseInt(form.target) : undefined,
+              amount: form.target ? parseInt(form.target, 10) : undefined,
               endDate: endTimestamp,
               ticketPrice: Math.floor(ticketPriceMillisats / 1000), // Convert to sats
               description: form.content.trim(),

@@ -1,5 +1,7 @@
 // Minimal test API
-export default function handler(req: any, res: any) {
+import { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default function handler(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({ 
     message: 'Simple test works!',
     timestamp: Date.now()

@@ -1,7 +1,7 @@
 // Server-side only - Nostr bot for posting fundraiser updates
 // NOTE: This will only work if you deploy to a server environment (not static hosting)
 // For static hosting, you'll need to set up a separate server/API for bot posting
-import { finalizeEvent, generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
+import { finalizeEvent, nip19 } from 'nostr-tools';
 import { Relay } from 'nostr-tools/relay';
 
 interface FundraiserUpdateOptions {
@@ -36,12 +36,12 @@ class NostrBot {
     try {
       const { data } = nip19.decode(this.nsec);
       return data as Uint8Array;
-    } catch (error) {
+    } catch {
       throw new Error('Invalid nsec format');
     }
   }
 
-  private async publishToRelays(event: any): Promise<void> {
+  private async publishToRelays(event: ReturnType<typeof finalizeEvent>): Promise<void> {
     const publishPromises = this.relays.map(async (relayUrl) => {
       try {
         const relay = await Relay.connect(relayUrl);

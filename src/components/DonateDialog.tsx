@@ -14,7 +14,7 @@ import { generateFundraiserInvoiceNWC } from "@/lib/nwc";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useCampaignStats } from "@/hooks/useCampaignStats";
 import { useWallet } from "@/hooks/useWallet";
-import { useToastUtils } from "@/lib/shared-utils";
+import { useToastUtils, useAuthorDisplay } from "@/lib/shared-utils";
 import { formatSats } from "@/lib/utils";
 import { LightningInvoice } from "@/components/LightningInvoice";
 import { LightningConfig } from "@/components/LightningConfig";
@@ -66,13 +66,14 @@ interface DonateDialogProps {
 }
 
 export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps) {
-  const { user } = useCurrentUser();
+  const { user, metadata } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const { data: stats } = useCampaignStats(campaign.pubkey, campaign.dTag);
   const wallet = useWallet();
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const toast = useToastUtils();
   const queryClient = useQueryClient();
+  const { displayName: creatorName } = useAuthorDisplay(campaign.pubkey);
   
   const [donationAmount, setDonationAmount] = useState("");
   const [message, setMessage] = useState("");
@@ -273,15 +274,14 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
         // Announce donation on Nostr (bot posting) - only if not anonymous
         if (!isAnonymous) {
           try {
-            const donorName = user?.metadata?.name || 
-                             user?.metadata?.display_name || 
-                             user?.metadata?.displayName ||
+            const donorName = metadata?.name || 
+                             metadata?.display_name ||
                              user?.pubkey?.substring(0, 8) + '...' ||
                              'Anonymous';
             
             announceDonation({
               title: campaign.title,
-              creator: campaign.creator || 'Podcaster',
+              creator: creatorName,
               donorName: donorName,
               donorPubkey: user.pubkey,
               amount: Math.floor(donationMsats / 1000), // Convert to sats

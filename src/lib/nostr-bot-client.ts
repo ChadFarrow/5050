@@ -1,6 +1,5 @@
 // Client-side Nostr bot for static hosting
 // This version posts from your account (asks for signing approval)
-import { finalizeEvent } from 'nostr-tools';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useCallback } from 'react';

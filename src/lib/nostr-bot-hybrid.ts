@@ -25,7 +25,7 @@ interface WinnerAnnouncementOptions {
 // Hook for hybrid bot functionality
 export function useNostrBotHybrid() {
   const { mutate: publishEvent } = useNostrPublish();
-  const { user } = useCurrentUser();
+  const { user, metadata } = useCurrentUser();
 
   const postFundraiserCreated = useCallback(async (options: FundraiserUpdateOptions): Promise<void> => {
     if (!user) {
@@ -34,10 +34,10 @@ export function useNostrBotHybrid() {
     }
 
     // Check if this looks like a bot account (has "bot" or "podraffle" in name)
-    const isBotAccount = user.metadata?.name?.toLowerCase().includes('bot') || 
-                        user.metadata?.name?.toLowerCase().includes('podraffle') ||
-                        user.metadata?.display_name?.toLowerCase().includes('bot') ||
-                        user.metadata?.display_name?.toLowerCase().includes('podraffle');
+    const isBotAccount = metadata?.name?.toLowerCase().includes('bot') || 
+                        metadata?.name?.toLowerCase().includes('podraffle') ||
+                        metadata?.display_name?.toLowerCase().includes('bot') ||
+                        metadata?.display_name?.toLowerCase().includes('podraffle');
 
     const content = `🎉 New Fundraiser Created!
 
@@ -75,7 +75,7 @@ ${options.url ? `Join: ${options.url}` : ''}
         }
       });
     });
-  }, [publishEvent, user]);
+  }, [publishEvent, user, metadata]);
 
   const postWinnerAnnouncement = useCallback(async (options: WinnerAnnouncementOptions): Promise<void> => {
     if (!user) {
@@ -83,10 +83,10 @@ ${options.url ? `Join: ${options.url}` : ''}
       return;
     }
 
-    const isBotAccount = user.metadata?.name?.toLowerCase().includes('bot') || 
-                        user.metadata?.name?.toLowerCase().includes('podraffle') ||
-                        user.metadata?.display_name?.toLowerCase().includes('bot') ||
-                        user.metadata?.display_name?.toLowerCase().includes('podraffle');
+    const isBotAccount = metadata?.name?.toLowerCase().includes('bot') || 
+                        metadata?.name?.toLowerCase().includes('podraffle') ||
+                        metadata?.display_name?.toLowerCase().includes('bot') ||
+                        metadata?.display_name?.toLowerCase().includes('podraffle');
 
     const content = `🏆 Winner Announced!
 
@@ -124,15 +124,15 @@ ${options.url ? `View: ${options.url}` : ''}
         }
       });
     });
-  }, [publishEvent, user]);
+  }, [publishEvent, user, metadata]);
 
   return {
     postFundraiserCreated,
     postWinnerAnnouncement,
     isReady: !!user,
-    isBotAccount: user?.metadata?.name?.toLowerCase().includes('bot') || 
-                  user?.metadata?.name?.toLowerCase().includes('podraffle') ||
-                  user?.metadata?.display_name?.toLowerCase().includes('bot') ||
-                  user?.metadata?.display_name?.toLowerCase().includes('podraffle'),
+    isBotAccount: metadata?.name?.toLowerCase().includes('bot') || 
+                  metadata?.name?.toLowerCase().includes('podraffle') ||
+                  metadata?.display_name?.toLowerCase().includes('bot') ||
+                  metadata?.display_name?.toLowerCase().includes('podraffle'),
   };
 }

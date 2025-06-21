@@ -45,7 +45,7 @@ export async function announceFundraiserCreated(options: FundraiserUpdateOptions
     let result;
     try {
       result = JSON.parse(responseText);
-    } catch (parseError) {
+    } catch {
       throw new Error(`Invalid JSON response: ${responseText}`);
     }
 
@@ -125,7 +125,7 @@ export async function announceTicketPurchase(options: TicketPurchaseOptions): Pr
     let result;
     try {
       result = JSON.parse(responseText);
-    } catch (parseError) {
+    } catch {
       throw new Error(`Invalid JSON response: ${responseText}`);
     }
 
@@ -159,7 +159,7 @@ export async function announceDonation(options: DonationOptions): Promise<void> 
     let result;
     try {
       result = JSON.parse(responseText);
-    } catch (parseError) {
+    } catch {
       throw new Error(`Invalid JSON response: ${responseText}`);
     }
 

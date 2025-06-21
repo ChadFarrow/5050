@@ -11,29 +11,7 @@ interface FundraiserData {
   url?: string;
 }
 
-// Simple crypto functions without external dependencies
-function hexToBytes(hex: string): Uint8Array {
-  return new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Simple SHA256 hash
-async function sha256(message: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(message);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return bytesToHex(new Uint8Array(hashBuffer));
-}
-
-// Simple Schnorr signature verification (placeholder - you'd need full implementation)
-async function signEvent(eventHash: string, privateKey: string): Promise<string> {
-  // For now, return a placeholder signature
-  // In a real implementation, you'd need proper Schnorr signing
-  return "placeholder_signature_" + Math.random().toString(36).substring(2);
-}
+// This is a test/placeholder API endpoint
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

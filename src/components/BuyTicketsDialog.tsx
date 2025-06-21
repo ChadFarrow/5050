@@ -14,7 +14,7 @@ import { generateFundraiserInvoiceNWC } from "@/lib/nwc";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useCampaignStats, storePendingPurchase, type TicketPurchase } from "@/hooks/useCampaignStats";
 import { useWallet } from "@/hooks/useWallet";
-import { useToastUtils } from "@/lib/shared-utils";
+import { useToast } from "@/hooks/useToast";
 import { formatSats } from "@/lib/utils";
 import { LightningInvoice } from "@/components/LightningInvoice";
 import { LightningConfig } from "@/components/LightningConfig";
@@ -23,6 +23,7 @@ import type { LightningInvoice as LightningInvoiceType } from "@/types/lightning
 import type { NostrEvent } from "@nostrify/nostrify";
 import { useQueryClient } from '@tanstack/react-query';
 import { announceTicketPurchase } from "@/lib/nostr-bot-serverless";
+import { useAuthorDisplay } from "@/lib/shared-utils";
 
 // Utility function to generate a deterministic payment hash from bolt11 invoice
 function extractPaymentHashFromBolt11(bolt11: string): string | null {
@@ -70,15 +71,17 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const { data: stats } = useCampaignStats(campaign.pubkey, campaign.dTag);
   const wallet = useWallet();
-  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
-  const toast = useToastUtils();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { displayName: creatorName } = useAuthorDisplay(campaign.pubkey);
+  const { displayName: buyerName } = useAuthorDisplay(user?.pubkey ?? '');
   
   const [ticketCount, setTicketCount] = useState("1");
   const [message, setMessage] = useState("");
   const [currentInvoice, setCurrentInvoice] = useState<LightningInvoiceType | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
   const tickets = parseInt(ticketCount) || 0;
   const totalCost = tickets * campaign.ticketPrice;
@@ -95,19 +98,28 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
   const handleBuyTickets = async () => {
     if (!user) {
-      toast.error("Error", "You must be logged in to buy tickets");
+      toast({
+        title: "Error",
+        description: "You must be logged in to buy tickets",
+      });
       return;
     }
 
     // Don't generate test user here - do it right before publishing event
 
     if (tickets <= 0) {
-      toast.error("Invalid Amount", "Please enter a valid number of tickets");
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid number of tickets",
+      });
       return;
     }
 
     if (!wallet.isConnected) {
-      toast.error("Lightning Wallet Required", "Please configure your Lightning wallet first");
+      toast({
+        title: "Lightning Wallet Required",
+        description: "Please configure your Lightning wallet first",
+      });
       setShowConfig(true);
       return;
     }
@@ -115,7 +127,10 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
     // Additional WebLN check
     if (!window.webln || typeof window.webln.makeInvoice !== 'function') {
       console.error('WebLN check failed:', { webln: !!window.webln, makeInvoice: typeof window.webln?.makeInvoice });
-      toast.error("WebLN Not Available", "Your wallet connection is not properly established. Please reconnect your wallet.");
+      toast({
+        title: "WebLN Not Available",
+        description: "Your wallet connection is not properly established. Please reconnect your wallet.",
+      });
       setShowConfig(true);
       return;
     }
@@ -147,7 +162,11 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
           console.log('✅ Successfully created NWC invoice');
         } catch (error) {
           console.error('❌ Failed to create NWC invoice:', error);
-          toast.error("Invoice Creation Failed", `Could not create invoice from fundraiser's NWC connection: ${error.message}`);
+          toast({
+            title: "Invoice Creation Failed",
+            description: `Could not create invoice from fundraiser's NWC connection: ${error.message}`,
+          });
+          setIsCreatingInvoice(false);
           return;
         }
       } else {
@@ -179,10 +198,13 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
       setCurrentInvoice(invoice);
     } catch (error) {
-      console.error("Error creating invoice:", error);
+      console.error("Error creating donation invoice:", error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create Lightning invoice';
       console.error("Full error details:", { error, message: errorMessage, wallet: wallet.isConnected });
-      toast.error("Invoice Creation Failed", errorMessage);
+      toast({
+        title: "Invoice Creation Failed",
+        description: errorMessage,
+      });
     } finally {
       setIsCreatingInvoice(false);
     }
@@ -251,19 +273,16 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
         }, 500);
 
         // Show success toast
-        toast.success("Tickets Purchased", `You purchased ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`);
+        toast({
+          title: "Tickets Purchased",
+          description: `You purchased ${tickets} ticket${tickets > 1 ? 's' : ''} for ${formatSats(totalCost)}`,
+        });
 
         // Announce ticket purchase on Nostr (bot posting)
         try {
-          const buyerName = user?.metadata?.name || 
-                           user?.metadata?.display_name || 
-                           user?.metadata?.displayName ||
-                           user?.pubkey?.substring(0, 8) + '...' ||
-                           'Anonymous';
-          
           announceTicketPurchase({
             title: campaign.title,
-            creator: campaign.creator || 'Podcaster',
+            creator: creatorName,
             buyerName: buyerName,
             buyerPubkey: signedEvent.pubkey,
             ticketCount: tickets,
@@ -286,14 +305,37 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
 
       const onError = (error: unknown) => {
         console.error('Failed to publish ticket purchase event:', error);
-        toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
+        toast({
+          title: "Purchase Recording Failed",
+          description: "Payment may have succeeded but failed to record. Please contact support.",
+        });
       };
 
       // Publish event with normal method
       publishEvent(eventData, { onSuccess, onError });
+
+      // Create a NIP-57 donation event (kind 9735)
+      // This is now redundant since the bot announces it, but we can leave it for compatibility
+      const nip57Tags = [
+        ["p", campaign.pubkey],
+        ["e", campaign.id],
+        ["amount", totalCost.toString()],
+        ["bolt11", currentInvoice.bolt11],
+      ];
+      if(user) {
+        nip57Tags.push(["p", user.pubkey]);
+      }
+      publishEvent({
+        kind: 9735,
+        content: `Donation for ${tickets} ticket(s) to ${campaign.title}`,
+        tags: nip57Tags,
+      });
     } catch (error) {
       console.error("Error recording purchase:", error);
-      toast.error("Purchase Recording Failed", "Payment may have succeeded but failed to record. Please contact support.");
+      toast({
+        title: "Purchase Recording Failed",
+        description: "Payment may have succeeded but failed to record. Please contact support.",
+      });
     } finally {
       setIsProcessingPayment(false);
     }
@@ -471,7 +513,7 @@ export function BuyTicketsDialog({ campaign, open, onOpenChange }: BuyTicketsDia
               {(isPending || isProcessingPayment || isCreatingInvoice) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isCreatingInvoice ? "Creating Invoice..." : 
                isProcessingPayment ? "Recording Purchase..." : 
-               `Buy ${tickets} Ticket${tickets > 1 ? 's' : ''}`}
+                `Buy ${tickets} Ticket${tickets > 1 ? 's' : ''}`}
             </Button>
           </div>
         )}
