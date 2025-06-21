@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CalendarIcon, ImageIcon, Loader2, Clock, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,6 +24,21 @@ import { useAuthorDisplay } from '@/lib/shared-utils';
 interface CreateFundraiserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editCampaign?: {
+    title: string;
+    description: string;
+    content: string;
+    podcast: string;
+    podcastUrl?: string;
+    episode?: string;
+    target?: number;
+    ticketPrice: number;
+    endDate?: number;
+    image?: string;
+    manualDraw: boolean;
+    nwc?: string;
+    dTag: string;
+  };
 }
 
 interface FundraiserForm {
@@ -62,14 +77,46 @@ const initialForm: FundraiserForm = {
   nwcConnection: "",
 };
 
-export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserDialogProps) {
+export function CreateFundraiserDialog({ open, onOpenChange, editCampaign }: CreateFundraiserDialogProps) {
   const { user } = useCurrentUser();
   const { mutate: publishEvent, isPending } = useNostrPublish();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const wallet = useWallet();
-  const [form, setForm] = useState<FundraiserForm>(initialForm);
+  
+  // Initialize form with edit data if provided
+  const getInitialForm = (): FundraiserForm => {
+    if (editCampaign) {
+      return {
+        title: editCampaign.title,
+        description: editCampaign.description,
+        content: editCampaign.content,
+        podcast: editCampaign.podcast,
+        podcastUrl: editCampaign.podcastUrl || "",
+        episode: editCampaign.episode || "",
+        target: editCampaign.target ? editCampaign.target.toString() : "",
+        ticketPrice: editCampaign.ticketPrice.toString(),
+        endDate: editCampaign.endDate ? new Date(editCampaign.endDate * 1000) : undefined,
+        useDuration: false, // Default to date mode for editing
+        durationValue: "1",
+        durationUnit: "hours",
+        image: editCampaign.image || "",
+        manualWinnerDraw: editCampaign.manualDraw,
+        nwcConnection: editCampaign.nwc || "",
+      };
+    }
+    return initialForm;
+  };
+  
+  const [form, setForm] = useState<FundraiserForm>(getInitialForm);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const { displayName: creatorDisplayName } = useAuthorDisplay(user?.pubkey ?? '');
+
+  // Reset form when editCampaign changes
+  useEffect(() => {
+    setForm(getInitialForm());
+  }, [editCampaign]);
 
   const updateForm = (field: keyof FundraiserForm, value: string | Date | undefined | boolean) => {
     try {
@@ -78,6 +125,66 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
     } catch (error) {
       console.error('Error updating form field:', field, error);
       // Don't let form updates crash the app
+    }
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File",
+        description: "Please select an image file (PNG, JPG, GIF, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      
+      // Convert to data URL for immediate preview and storage
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        updateForm("image", dataUrl);
+        toast({
+          title: "Image Uploaded",
+          description: "Image has been added to your fundraiser",
+        });
+        setIsUploadingImage(false);
+      };
+      
+      reader.onerror = () => {
+        toast({
+          title: "Upload Failed",
+          description: "Failed to read the image file",
+          variant: "destructive",
+        });
+        setIsUploadingImage(false);
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "An error occurred while uploading the image",
+        variant: "destructive",
+      });
+      setIsUploadingImage(false);
     }
   };
 
@@ -142,6 +249,17 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
   };
 
   const handleSubmit = async () => {
+    // For new fundraisers, show confirmation dialog first
+    if (!editCampaign) {
+      setShowConfirmDialog(true);
+      return;
+    }
+    
+    // For edits, proceed directly
+    await performSubmit();
+  };
+
+  const performSubmit = async () => {
     if (!user) {
       toast({
         title: "Error",
@@ -171,8 +289,8 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
     }
 
     try {
-      // Generate unique identifier
-      const dTag = `fundraiser-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Generate unique identifier (or reuse existing for edits)
+      const dTag = editCampaign ? editCampaign.dTag : `fundraiser-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Convert amounts to millisats
       const targetSats = form.target ? parseInt(form.target) : 0; // Default to 0 if no goal set
@@ -213,6 +331,7 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
         tags.push(["episode", form.episode.trim()]);
       }
       if (form.image.trim()) {
+        console.log('🖼️ Adding image tag to fundraiser:', form.image.trim());
         tags.push(["image", form.image.trim()]);
       }
       
@@ -242,34 +361,38 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
           console.log('📋 About to show toast and invalidate queries...');
           toast({
             title: "Success",
-            description: "Fundraiser created successfully",
+            description: editCampaign ? "Fundraiser updated successfully" : "Fundraiser created successfully",
           });
           queryClient.invalidateQueries({ queryKey: ['fundraisers'] });
           console.log('📋 Toast shown and queries invalidated. Starting bot announcement...');
           
-          // Announce new fundraiser on Nostr (bot posting)
-          console.log('🤖 Starting bot announcement process...');
-          try {
-            // Get creator name from user metadata or fallback
-            const creatorName = creatorDisplayName || 
-                                form.podcast.trim() || 
-                                'Podcaster';
-            
-            await announceFundraiserCreated({
-              title: form.title.trim(),
-              creator: creatorName,
-              amount: form.target ? parseInt(form.target, 10) : undefined,
-              endDate: endTimestamp,
-              ticketPrice: Math.floor(ticketPriceMillisats / 1000), // Convert to sats
-              description: form.content.trim(),
-              url: window.location.origin,
-            });
-            console.log('Bot announcement posted for new fundraiser');
-          } catch (error) {
-            console.warn('Failed to post bot announcement:', error);
-            // Don't fail the whole process if bot posting fails
+          // Announce new fundraiser on Nostr (bot posting) - only for new fundraisers
+          if (!editCampaign) {
+            console.log('🤖 Starting bot announcement process...');
+            try {
+              // Get creator name from user metadata or fallback
+              const creatorName = creatorDisplayName || 
+                                  form.podcast.trim() || 
+                                  'Podcaster';
+              
+              await announceFundraiserCreated({
+                title: form.title.trim(),
+                creator: creatorName,
+                amount: form.target ? parseInt(form.target, 10) : undefined,
+                endDate: endTimestamp,
+                ticketPrice: Math.floor(ticketPriceMillisats / 1000), // Convert to sats
+                description: form.content.trim(),
+                url: window.location.origin,
+              });
+              console.log('Bot announcement posted for new fundraiser');
+            } catch (error) {
+              console.warn('Failed to post bot announcement:', error);
+              // Don't fail the whole process if bot posting fails
+            }
           }
           
+          // Close both dialogs
+          setShowConfirmDialog(false);
           onOpenChange(false);
         },
         onError: (error) => {
@@ -293,22 +416,26 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
 
   const handleClose = () => {
     if (!isPending) {
-      setForm(initialForm);
+      setForm(getInitialForm());
       onOpenChange(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Fundraiser</DialogTitle>
-          <DialogDescription>
-            Set up a 50/50 raffle to raise funds for your podcast. Half goes to the winner, half supports your show.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editCampaign ? 'Edit Fundraiser' : 'Create Fundraiser'}</DialogTitle>
+            <DialogDescription>
+              {editCampaign 
+                ? 'Update your fundraiser details. Changes will be published as a new version.'
+                : 'Set up a 50/50 raffle to raise funds for your podcast. Half goes to the winner, half supports your show.'
+              }
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-6 py-4">
+          <div className="space-y-6 py-4">
           {/* Basic Info */}
           <div className="space-y-4">
             <div className="space-y-2">
@@ -517,15 +644,47 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
               <div className="flex space-x-2">
                 <Input
                   id="image"
-                  placeholder="https://example.com/image.jpg"
+                  placeholder="https://example.com/image.jpg or upload a file"
                   value={form.image}
                   onChange={(e) => updateForm("image", e.target.value)}
-                  disabled={isPending}
+                  disabled={isPending || isUploadingImage}
                 />
-                <Button variant="outline" size="icon" disabled={isPending}>
-                  <ImageIcon className="h-4 w-4" />
-                </Button>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isPending || isUploadingImage}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    title="Upload image file"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    disabled={isPending || isUploadingImage}
+                    type="button"
+                  >
+                    {isUploadingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImageIcon className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
+              {form.image && (
+                <div className="mt-2">
+                  <img 
+                    src={form.image} 
+                    alt="Fundraiser preview" 
+                    className="w-32 h-24 object-cover rounded border"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -626,11 +785,64 @@ export function CreateFundraiserDialog({ open, onOpenChange }: CreateFundraiserD
           </Button>
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Fundraiser
+            {editCampaign ? 'Update Fundraiser' : 'Create Fundraiser'}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
+
+      {/* Confirmation Dialog for New Fundraisers */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ready to Create Fundraiser?</DialogTitle>
+            <DialogDescription>
+              Before creating your fundraiser, please understand the editing limitations:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 text-sm py-4">
+            <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg border border-green-200 dark:border-green-800">
+              <p className="font-medium text-green-800 dark:text-green-200 mb-2">✅ You CAN edit (only before tickets are sold):</p>
+              <ul className="text-green-700 dark:text-green-300 space-y-1 text-xs">
+                <li>• Title, descriptions, and podcast info</li>
+                <li>• Images and episode details</li>
+                <li>• Target amount and ticket price</li>
+                <li>• End date and settings</li>
+              </ul>
+            </div>
+
+            <div className="bg-red-50 dark:bg-red-950 p-3 rounded-lg border border-red-200 dark:border-red-800">
+              <p className="font-medium text-red-800 dark:text-red-200 mb-2">❌ You CANNOT edit (after tickets are sold):</p>
+              <ul className="text-red-700 dark:text-red-300 space-y-1 text-xs">
+                <li>• Any fundraiser details</li>
+                <li>• Changes could affect fairness</li>
+                <li>• Only deletion is allowed (if possible)</li>
+              </ul>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">💡 Pro Tip:</p>
+              <p className="text-blue-700 dark:text-blue-300 text-xs">Double-check all details before publishing. Once people buy tickets, changes aren't allowed to maintain trust and fairness.</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+              Review Details
+            </Button>
+            <Button 
+              onClick={performSubmit}
+              disabled={isPending}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Fundraiser
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

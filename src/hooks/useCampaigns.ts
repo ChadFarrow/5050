@@ -126,7 +126,13 @@ async function eventToFundraiser(event: NostrEvent, nostr: { query: (filters: ob
     podcast: tags.get('podcast') || '',
     podcastUrl: tags.get('podcast_url'),
     episode: tags.get('episode'),
-    image: tags.get('image'),
+    image: (() => {
+      const imageUrl = tags.get('image');
+      if (imageUrl) {
+        console.log('🖼️ Found image URL for fundraiser:', event.id?.substring(0, 8), imageUrl);
+      }
+      return imageUrl;
+    })(),
     nwc: tags.get('nwc'),
     isActive,
     createdAt: event.created_at,

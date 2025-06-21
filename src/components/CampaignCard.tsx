@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Target, Ticket, Trophy, Clock, ExternalLink, Crown, Trash2, Heart } from "lucide-react";
+import { Target, Ticket, Trophy, Clock, ExternalLink, Crown, Trash2, Heart, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { useLoginDialog } from "@/contexts/LoginContext";
 import { BuyTicketsDialog } from "@/components/BuyTicketsDialog";
 import { DonateDialog } from "@/components/DonateDialog";
 import { DeleteFundraiserDialog } from "@/components/DeleteFundraiserDialog";
+import { CreateFundraiserDialog } from "@/components/CreateCampaignDialog";
 import { genUserName } from "@/lib/genUserName";
 import { formatSats, formatTimeRemaining } from "@/lib/utils";
 import { createNostrProfileUrl } from "@/lib/shared-utils";
@@ -32,6 +33,7 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
   const [showBuyDialog, setShowBuyDialog] = useState(false);
   const [showDonateDialog, setShowDonateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const metadata = author.data?.metadata;
   const displayName = metadata?.name ?? genUserName(fundraiser.pubkey);
@@ -117,6 +119,17 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEditDialog(true)}
+                  className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  title="Edit fundraiser"
+                >
+                  <Edit className="h-3 w-3" />
+                </Button>
+              )}
               {canDelete && (
                 <Button
                   variant="ghost"
@@ -404,6 +417,26 @@ export function CampaignCard({ fundraiser }: FundraiserCardProps) {
         onOpenChange={setShowDeleteDialog}
         fundraiser={fundraiser}
         hasTickets={hasTickets}
+      />
+
+      <CreateFundraiserDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        editCampaign={{
+          title: fundraiser.title,
+          description: fundraiser.description,
+          content: fundraiser.content,
+          podcast: fundraiser.podcast,
+          podcastUrl: fundraiser.podcastUrl,
+          episode: fundraiser.episode,
+          target: fundraiser.target,
+          ticketPrice: fundraiser.ticketPrice,
+          endDate: fundraiser.endDate,
+          image: fundraiser.image,
+          manualDraw: fundraiser.manualDraw,
+          nwc: fundraiser.nwc,
+          dTag: fundraiser.dTag,
+        }}
       />
     </>
   );

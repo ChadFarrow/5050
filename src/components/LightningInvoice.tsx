@@ -168,36 +168,15 @@ export function LightningInvoice({ invoice, onPaymentComplete }: LightningInvoic
           </div>
         </div>
 
-        <Separator />
-
-        <div className="space-y-1">
-          <div className="text-sm font-medium">Invoice</div>
-          <div className="text-xs font-mono bg-muted p-2 rounded break-all max-h-20 overflow-y-auto">
-            {invoice.bolt11}
-          </div>
-        </div>
-
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCopy}
-            className="flex-1"
-          >
-            {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-            {copied ? "Copied" : "Copy"}
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleOpenWallet}
-            className="flex-1"
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Open Wallet
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleCopy}
+          className="w-full"
+        >
+          {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+          {copied ? "Copied" : "Copy"}
+        </Button>
 
         {isFundraiserInvoice ? (
           <div className="text-sm text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-200 p-3 rounded mb-3">

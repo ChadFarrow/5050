@@ -135,7 +135,7 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="py-8 sm:py-16 px-4">
+      <section className="py-8 sm:pt-16 sm:pb-8 px-4">
         <div className="container mx-auto text-center max-w-4xl">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-purple-600 via-blue-600 to-teal-600 bg-clip-text text-transparent leading-tight">
             Support Your Favorite Podcasters

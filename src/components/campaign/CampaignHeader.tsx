@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Target, Ticket, Users, Trash2 } from "lucide-react";
+import { Calendar, Target, Ticket, Users, Trash2, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatSats } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { DeleteFundraiserDialog } from "@/components/DeleteFundraiserDialog";
+import { CreateFundraiserDialog } from "@/components/CreateCampaignDialog";
 import type { Fundraiser } from "@/hooks/useCampaigns";
 import type { FundraiserStats } from "@/hooks/useCampaignStats";
 
@@ -19,6 +20,7 @@ interface CampaignHeaderProps {
 export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {
   const { user } = useCurrentUser();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   
   const totalRaised = stats?.totalRaised || 0;
   const totalDonations = stats?.totalDonations || 0;
@@ -77,6 +79,17 @@ export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {
             <p className="text-muted-foreground">{campaign.podcast}</p>
           </div>
           <div className="flex items-center gap-2">
+            {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEditDialog(true)}
+                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+              >
+                <Edit className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            )}
             {canDelete && (
               <Button
                 variant="outline"
@@ -208,6 +221,26 @@ export function CampaignHeader({ campaign, stats }: CampaignHeaderProps) {
         onOpenChange={setShowDeleteDialog}
         fundraiser={campaign}
         hasTickets={hasTickets}
+      />
+
+      <CreateFundraiserDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        editCampaign={{
+          title: campaign.title,
+          description: campaign.description,
+          content: campaign.content,
+          podcast: campaign.podcast,
+          podcastUrl: campaign.podcastUrl,
+          episode: campaign.episode,
+          target: campaign.target,
+          ticketPrice: campaign.ticketPrice,
+          endDate: campaign.endDate,
+          image: campaign.image,
+          manualDraw: campaign.manualDraw,
+          nwc: campaign.nwc,
+          dTag: campaign.dTag,
+        }}
       />
     </Card>
   );
