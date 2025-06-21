@@ -283,7 +283,7 @@ export function DonateDialog({ campaign, open, onOpenChange }: DonateDialogProps
               title: campaign.title,
               creator: campaign.creator || 'Podcaster',
               donorName: donorName,
-              donorPubkey: signedEvent.pubkey,
+              donorPubkey: user.pubkey,
               amount: Math.floor(donationMsats / 1000), // Convert to sats
               url: window.location.origin,
             });
