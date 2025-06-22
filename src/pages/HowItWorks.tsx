@@ -22,8 +22,8 @@ const HowItWorks = () => {
               </Button>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-              <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
-                <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              <div className="flex-shrink-0">
+                <img src="/logo.webp" alt="PodRaffle" className="h-8 w-8 sm:h-12 sm:w-12 rounded-lg" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent truncate">

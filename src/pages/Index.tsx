@@ -82,8 +82,8 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4 space-y-3">
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-              <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
-                <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              <div className="flex-shrink-0">
+                <img src="/logo.webp" alt="PodRaffle" className="h-8 w-8 sm:h-12 sm:w-12 rounded-lg" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent truncate">
@@ -323,8 +323,8 @@ const Index = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center space-x-2 mb-4">
-                <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-1.5 rounded">
-                  <Trophy className="h-4 w-4 text-white" />
+                <div>
+                  <img src="/logo.webp" alt="PodRaffle" className="h-8 w-8 rounded" />
                 </div>
                 <span className="font-bold">PodRaffle</span>
               </div>
