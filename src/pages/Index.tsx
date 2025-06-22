@@ -77,6 +77,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="relative z-10">
       {/* Header */}
       <header className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 space-y-3">
@@ -135,17 +136,25 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="py-8 sm:pt-16 sm:pb-8 px-4">
-        <div className="container mx-auto text-center max-w-4xl">
+      <section className="py-8 sm:pt-16 sm:pb-8 px-4 relative">
+        {/* Background Image for Hero */}
+        <div 
+          className="absolute inset-0 bg-center bg-no-repeat bg-cover opacity-6 dark:opacity-35"
+          style={{
+            backgroundImage: 'url(/secondary-image.webp)',
+            backgroundSize: '800px',
+            backgroundPosition: 'center center'
+          }}
+        ></div>
+        <div className="container mx-auto text-center max-w-4xl relative z-10">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-purple-600 via-blue-600 to-teal-600 bg-clip-text text-transparent leading-tight">
             Support Your Favorite Podcasters
           </h2>
-          <p className="text-base sm:text-lg lg:text-xl text-muted-foreground mb-6 sm:mb-8 leading-relaxed px-4">
+          <p className="text-base sm:text-lg lg:text-xl text-white dark:text-muted-foreground mb-6 sm:mb-8 leading-relaxed px-4">
             Join 50/50 raffles to support podcast creators. Buy tickets for a chance to win half the pot 
             while helping podcasters fund their shows. Built on Nostr with Lightning payments.
           </p>
           
-
           {user && (
             <Button 
               onClick={() => setShowCreateDialog(true)}
@@ -359,6 +368,7 @@ const Index = () => {
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 };
