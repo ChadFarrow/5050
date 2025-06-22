@@ -87,7 +87,7 @@ export function DonateToCreatorDialog({ open, onOpenChange }: DonateToCreatorDia
       // Step 2: Request invoice from callback URL
       const callbackUrl = new URL(lnurlData.callback);
       callbackUrl.searchParams.set('amount', amountMsat.toString());
-      callbackUrl.searchParams.set('comment', `Tip for PodRaffle creator via app interface`);
+      callbackUrl.searchParams.set('comment', `Donation for PodRaffle creator via app interface`);
       
       const invoiceResponse = await fetch(callbackUrl.toString());
       
@@ -204,10 +204,10 @@ export function DonateToCreatorDialog({ open, onOpenChange }: DonateToCreatorDia
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Heart className="h-5 w-5 mr-2 text-red-500" />
-            Support App Creator
+            Support PodRaffle's Development
           </DialogTitle>
           <DialogDescription>
-            {lightningInvoice ? "Pay the Lightning invoice below" : "Support the development of PodRaffle"}
+            Thank you for considering a donation! PodRaffle is an open-source project built with love for the podcasting community. I built this to learn how this stuff works under the hood but also to help give back to the Value4Value community that i love so much
           </DialogDescription>
         </DialogHeader>
 
@@ -279,8 +279,7 @@ export function DonateToCreatorDialog({ open, onOpenChange }: DonateToCreatorDia
                   
                   <Alert>
                     <AlertDescription className="text-sm">
-                      Scan this invoice with your Lightning wallet or copy it to pay. 
-                      Thank you for supporting the development of PodRaffle!
+                      Scan the QR code with any Lightning wallet or click the button below to pay.
                     </AlertDescription>
                   </Alert>
                 </CardContent>
@@ -299,16 +298,12 @@ export function DonateToCreatorDialog({ open, onOpenChange }: DonateToCreatorDia
               {/* App Info */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">PodRaffle App Creator</CardTitle>
-                  <CardDescription className="text-xs">{CREATOR_LIGHTNING_ADDRESS}</CardDescription>
+                  <CardTitle className="text-sm">Make a Donation</CardTitle>
+                  <CardDescription className="text-xs">Enter an amount in sats to generate a Lightning invoice.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Support the creator of PodRaffle - a decentralized fundraising platform for podcasters.
-                    Your support helps maintain and improve the app for the entire community.
-                  </p>
+                <CardContent>
                   <div className="flex items-center space-x-2 text-sm">
-                    <span className="text-muted-foreground">Follow on Nostr:</span>
+                    <span className="text-muted-foreground">Follow Creator on Nostr:</span>
                     <Button
                       variant="link"
                       size="sm"
@@ -329,7 +324,7 @@ export function DonateToCreatorDialog({ open, onOpenChange }: DonateToCreatorDia
 
               {/* Donation Amount */}
               <div className="space-y-2">
-                <Label htmlFor="creator-amount">Tip Amount (sats)</Label>
+                <Label htmlFor="creator-amount">Donation Amount (sats)</Label>
                 <Input
                   id="creator-amount"
                   type="number"
@@ -348,7 +343,7 @@ export function DonateToCreatorDialog({ open, onOpenChange }: DonateToCreatorDia
               {donationSats > 0 && (
                 <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Tip Summary</CardTitle>
+                    <CardTitle className="text-sm">Donation Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="flex justify-between text-sm">
@@ -377,7 +372,7 @@ export function DonateToCreatorDialog({ open, onOpenChange }: DonateToCreatorDia
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               {isCreatingInvoice && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isCreatingInvoice ? "Creating Invoice..." : `Create Invoice for ${donationSats > 0 ? formatSats(donationMsats) : '...'}`}
+              {isCreatingInvoice ? "Creating Invoice..." : "Create Lightning Invoice"}
             </Button>
           </div>
         )}
