@@ -7,7 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useWinnerNotification } from "@/hooks/useWinnerNotification";
-import { useToastUtils } from "@/lib/shared-utils";
+import { useToastUtils, useAuthorDisplay } from "@/lib/shared-utils";
+import { announceWinner } from "@/lib/nostr-bot-serverless";
 import { formatSats } from "@/lib/utils";
 import type { Campaign } from "@/hooks/useCampaigns";
 import type { CampaignStats, TicketPurchase } from "@/hooks/useCampaignStats";
@@ -57,6 +58,9 @@ export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
 
   // Check if user is the campaign creator
   const isCreator = user?.pubkey === campaign.pubkey;
+  
+  // Get creator display name for bot posting
+  const { displayName: creatorDisplayName } = useAuthorDisplay(campaign.pubkey);
   
   // For manual draws, we show the button regardless of end date
   
@@ -164,6 +168,25 @@ export function DrawWinnerCard({ campaign, stats }: DrawWinnerCardProps) {
           } catch (notificationError) {
             console.error('Failed to send winner notification:', notificationError);
             // Don't show error to user as the main action (drawing winner) succeeded
+          }
+
+          // Announce winner on Nostr (bot posting)
+          try {
+            const creatorName = creatorDisplayName || campaign.podcast || 'Podcaster';
+            const winnerName = `Winner ${winnerAssignment.purchase.pubkey.substring(0, 8)}...`;
+            
+            await announceWinner({
+              title: campaign.title,
+              creator: creatorName,
+              winner: winnerName,
+              prizeAmount: Math.floor(winnerAmount / 1000), // Convert to sats
+              totalRaised: Math.floor(totalRaised / 1000), // Convert to sats
+              url: window.location.origin,
+            });
+            console.log('✅ Bot winner announcement posted successfully');
+          } catch (botError) {
+            console.warn('❌ Failed to post bot winner announcement:', botError);
+            // Don't fail the whole process if bot posting fails
           }
           
           // Invalidate queries to refresh the UI

@@ -60,7 +60,7 @@ export async function announceFundraiserCreated(options: FundraiserUpdateOptions
 
 export async function announceWinner(options: WinnerAnnouncementOptions): Promise<void> {
   try {
-    const response = await fetch('/api/bot/announce-winner', {
+    const response = await fetch('/api/bot-announce-winner', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

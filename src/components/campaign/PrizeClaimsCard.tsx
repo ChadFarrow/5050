@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Gift, Copy, Check, User, Clock, Zap } from "lucide-react";
+import { Gift, Copy, Check, User, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,11 +39,6 @@ export function PrizeClaimsCard({ campaign, result }: PrizeClaimsCardProps) {
     setTimeout(() => setCopiedPayment(null), 2000);
   };
 
-  const openLightningAddress = (address: string) => {
-    // Attempt to open with lightning: protocol, fallback to LNURL service
-    const lightningUrl = `lightning:${address}`;
-    window.open(lightningUrl, '_blank');
-  };
 
   if (!claims || claims.length === 0) {
     return (
@@ -87,7 +82,6 @@ export function PrizeClaimsCard({ campaign, result }: PrizeClaimsCardProps) {
             claim={claim}
             result={result}
             onCopy={copyToClipboard}
-            onOpenLightning={openLightningAddress}
             isCopied={copiedPayment === claim.id}
           />
         ))}
@@ -113,11 +107,10 @@ interface ClaimItemProps {
   };
   result: CampaignResult;
   onCopy: (text: string, id: string) => void;
-  onOpenLightning: (address: string) => void;
   isCopied: boolean;
 }
 
-function ClaimItem({ claim, result, onCopy, onOpenLightning, isCopied }: ClaimItemProps) {
+function ClaimItem({ claim, result, onCopy, isCopied }: ClaimItemProps) {
   const { displayName, profileImage } = useAuthorDisplay(claim.pubkey);
   const claimDate = new Date(claim.createdAt * 1000);
   
@@ -175,16 +168,6 @@ function ClaimItem({ claim, result, onCopy, onOpenLightning, isCopied }: ClaimIt
             >
               {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
-            {claim.paymentMethod === "lnaddress" && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => onOpenLightning(claim.paymentInfo)}
-                title="Open with Lightning wallet"
-              >
-                <Zap className="h-4 w-4" />
-              </Button>
-            )}
           </div>
         </div>
 
@@ -202,7 +185,7 @@ function ClaimItem({ claim, result, onCopy, onOpenLightning, isCopied }: ClaimIt
         <Separator />
 
         <Alert>
-          <Zap className="h-4 w-4" />
+          <Gift className="h-4 w-4" />
           <AlertDescription>
             {claim.paymentMethod === "lnaddress" 
               ? `Send ${formatSats(result.winnerAmount)} to the Lightning address above using your wallet or NWC connection.`
